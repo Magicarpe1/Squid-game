@@ -118,11 +118,11 @@
 
                 const playerNumber = document.createElement('div');
                 playerNumber.className = 'player-number';
-                playerNumber.textContent = #${player.id};
+                playerNumber.textContent = `#${player.id}`;
 
                 const playerLives = document.createElement('div');
                 playerLives.className = 'player-lives';
-                playerLives.textContent = ${player.lives} ❤️;
+                playerLives.textContent = `${player.lives} ❤️`;
 
                 if (player.isWinner) {
                     playerCard.style.background = '#4caf50'; // Vert pour gagnants
@@ -195,7 +195,7 @@
                         if (player) player.isWinner = true;
                     });
                     renderPlayers();
-                    alert(Gagnants détectés : ${matches.join(', ')});
+                    alert(`Gagnants détectés : ${matches.join(', ')}`);
                 } else {
                     console.log('Aucun numéro détecté dans la phrase.');
                 }
