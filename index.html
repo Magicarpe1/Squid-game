@@ -3,17 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Squid Game - Gestion des Joueurs</title>
+    <title>Squid Game</title>
     <style>
         @font-face {
-            font-family: "SquidGameFont";
+            font-family: "GameOfSquids";
             src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
         }
 
+        @font-face {
+            font-family: "PlayerFont";
+            src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
+        }
+
         body {
-            font-family: "SquidGameFont", sans-serif;
-            background: #000;
-            color: #fff;
+            font-family: "GameOfSquids", sans-serif;
+            background-color: #101010;
+            color: white;
             text-align: center;
             margin: 0;
             padding: 20px;
@@ -21,122 +26,139 @@
 
         h1 {
             font-size: 3rem;
-            color: #ff007f;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            color: white;
         }
 
         #players-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 15px;
-            margin: 20px auto;
+            gap: 10px;
         }
 
         .player-card {
-            background: #009688;
-            width: 100px;
-            height: 140px;
+            width: 80px;
+            height: 120px;
+            border: 2px solid white;
+            border-radius: 5px;
+            background-color: #007575;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            flex-direction: column;
             cursor: pointer;
-            transition: transform 0.2s ease, background-color 0.3s ease;
+            font-family: "PlayerFont", sans-serif;
+            position: relative;
         }
 
-        .player-card:hover {
-            transform: scale(1.1);
-            background: #4caf50;
+        .player-card.active {
+            border-color: limegreen;
+            background-color: #0a0;
         }
 
-        .player-number {
+        .player-card-number {
             font-size: 2rem;
-            color: #fff;
-            margin: 0;
+            color: white;
+            background-color: #005050;
+            padding: 5px 10px;
+            border: 2px solid white;
+            border-radius: 5px;
         }
 
         .player-lives {
             font-size: 1.2rem;
-            color: #fff;
+            color: white;
+            margin-top: 5px;
         }
 
-        .button {
-            margin: 20px 10px;
-            padding: 15px 30px;
+        button {
+            padding: 10px 20px;
             font-size: 1.2rem;
-            color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-family: "SquidGameFont", sans-serif;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            margin: 20px 10px;
+            font-family: "GameOfSquids", sans-serif;
         }
 
-        .button-pink {
-            background: #ff007f;
+        #submit-btn {
+            background-color: #ff3e68;
+            color: white;
         }
 
-        .button-pink:hover {
-            background: #e00070;
+        #submit-btn:hover {
+            background-color: #c32d4e;
         }
 
-        .button-green {
-            background: #00c853;
+        #reset-btn {
+            background-color: #32cd32;
+            color: white;
         }
 
-        .button-green:hover {
-            background: #00b248;
+        #reset-btn:hover {
+            background-color: #228b22;
+        }
+
+        #voice-btn {
+            background-color: #0073e6;
+            color: white;
+        }
+
+        #voice-btn:hover {
+            background-color: #005bb5;
         }
     </style>
 </head>
 <body>
-    <h1>Squid Game - Gestion des Joueurs</h1>
+    <h1>
+        <span>SQUID GAME</span>
+    </h1>
+    <p>Cliquez sur un joueur ou utilisez la reconnaissance vocale pour marquer les gagnants.</p>
 
     <div id="players-container"></div>
-
-    <button class="button button-pink" onclick="resetLives()">Réinitialiser les Vies</button>
-    <button class="button button-green" onclick="startVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+    <button id="voice-btn" onclick="startVoiceRecognition()">Utiliser la reconnaissance vocale</button>
+    <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
+    <button id="reset-btn" onclick="resetLives()">Réinitialiser les vies</button>
 
     <script>
-        // Configuration des joueurs
-        const players = Array.from({ length: 60 }, (_, i) => ({
-            id: i + 1,
-            lives: 6,
-            isWinner: false,
-        }));
+        const players = [];
+        const totalLives = 6; // Chaque joueur commence avec 6 vies
 
-        // Fonction pour afficher les joueurs
+        // Initialiser les joueurs
+        for (let i = 1; i <= 60; i++) {
+            players.push({ id: i, lives: totalLives, isWinner: false });
+        }
+
+        const playersContainer = document.getElementById('players-container');
+
+        // Générer les cartes des joueurs
         function renderPlayers() {
-            const container = document.getElementById('players-container');
-            container.innerHTML = '';
+            playersContainer.innerHTML = ''; // Réinitialiser le conteneur
             players.forEach(player => {
                 const playerCard = document.createElement('div');
-                playerCard.className = 'player-card';
+                playerCard.className = 'player-card' + (player.isWinner ? ' active' : '');
                 playerCard.onclick = () => toggleWinner(player.id);
 
                 const playerNumber = document.createElement('div');
-                playerNumber.className = 'player-number';
-                playerNumber.textContent = `#${player.id}`;
+                playerNumber.className = 'player-card-number';
+                playerNumber.textContent = player.id.toString().padStart(3, '0');
 
                 const playerLives = document.createElement('div');
                 playerLives.className = 'player-lives';
-                playerLives.textContent = `${player.lives} ❤️`;
-
-                if (player.isWinner) {
-                    playerCard.style.background = '#4caf50'; // Vert pour gagnants
-                } else if (player.lives === 0) {
-                    playerCard.style.background = '#b71c1c'; // Rouge pour éliminés
-                }
+                playerLives.textContent = `Vies: ${player.lives}`;
 
                 playerCard.appendChild(playerNumber);
                 playerCard.appendChild(playerLives);
-                container.appendChild(playerCard);
+                playersContainer.appendChild(playerCard);
             });
         }
 
-        // Fonction pour activer/désactiver gagnant
+        // Activer/Désactiver le statut gagnant
         function toggleWinner(playerId) {
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -145,29 +167,29 @@
             }
         }
 
-        // Réinitialiser les vies
+        // Processus de fin de manche
+        function processRound() {
+            players.forEach(player => {
+                if (!player.isWinner && player.lives > 0) {
+                    player.lives--; // Les non-gagnants perdent une vie
+                }
+                player.isWinner = false; // Réinitialiser les statuts de gagnant
+            });
+            renderPlayers();
+            alert('Manche terminée ! Les vies ont été mises à jour.');
+        }
+
+        // Réinitialiser toutes les vies
         function resetLives() {
             players.forEach(player => {
-                player.lives = 6;
+                player.lives = totalLives;
                 player.isWinner = false;
             });
             renderPlayers();
-            alert('Les vies ont été réinitialisées.');
+            alert('Les vies des joueurs ont été réinitialisées.');
         }
 
-        // Réduire les vies des perdants
-        function reduceLives() {
-            players.forEach(player => {
-                if (!player.isWinner && player.lives > 0) {
-                    player.lives -= 1;
-                }
-                player.isWinner = false; // Réinitialiser les gagnants après la manche
-            });
-            renderPlayers();
-            alert('Vies réduites pour les perdants.');
-        }
-
-        // Reconnaissance vocale continue
+        // Reconnaissance vocale pour détecter les gagnants
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 alert('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -178,12 +200,11 @@
             recognition.lang = 'fr-FR'; // Langue française
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
-            recognition.continuous = true; // Mode continu
 
             recognition.start();
 
             recognition.onresult = (event) => {
-                const result = event.results[event.results.length - 1][0].transcript;
+                const result = event.results[0][0].transcript;
                 console.log('Reconnaissance vocale:', result);
 
                 // Extraire les numéros à partir de la phrase
@@ -197,23 +218,17 @@
                     renderPlayers();
                     alert(`Gagnants détectés : ${matches.join(', ')}`);
                 } else {
-                    console.log('Aucun numéro détecté dans la phrase.');
+                    alert('Aucun numéro détecté dans la phrase.');
                 }
             };
 
             recognition.onerror = (event) => {
                 console.error('Erreur de reconnaissance vocale:', event.error);
+                alert('Erreur lors de la reconnaissance vocale. Veuillez réessayer.');
             };
-
-            // Redémarrer la reconnaissance vocale si elle s'arrête
-            recognition.onend = () => {
-                recognition.start();
-            };
-
-            alert('La reconnaissance vocale est maintenant active en continu.');
         }
 
-        // Initialiser l'affichage des joueurs
+        // Initialiser l'affichage
         renderPlayers();
     </script>
 </body>
