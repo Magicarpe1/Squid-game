@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squid Game - Gestion des Joueurs</title>
+    <style>
+        @font-face {
+            font-family: "Squid Game";
+            src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
+        }
+
+        body {
+            font-family: "Squid Game", sans-serif;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: #ff0080;
+        }
+
+        .players-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .player-card {
+            background: #00a800;
+            color: #fff;
+            width: 100px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .player-card.winner {
+            background: #ff0080;
+        }
+
+        .player-card:hover {
+            transform: scale(1.1);
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: "Squid Game", sans-serif;
+        }
+
+        button.submit {
+            background: #ff0080;
+            color: #fff;
+        }
+
+        button.reset {
+            background: #00a800;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Squid Game - Gestion des Joueurs</h1>
+
+    <div class="players-container" id="players-container"></div>
+
+    <div class="controls">
+        <button class="submit" onclick="submitWinners()">Soumettre les gagnants</button>
+        <button class="reset" onclick="resetLives()">Réinitialiser les vies</button>
+        <button class="submit" onclick="startVoiceRecognition()">Activer reconnaissance vocale</button>
+    </div>
+
+    <script>
+        const players = [];
+        const initialLives = 6;
+
+        // Initialisation des joueurs
+        for (let i = 1; i <= 60; i++) {
+            players.push({ id: i, lives: initialLives, isWinner: false });
+        }
+
+        const playersContainer = document.getElementById('players-container');
+
+        // Rendu des cartes des joueurs
+        function renderPlayers() {
+            playersContainer.innerHTML = '';
+            players.forEach(player => {
+                const playerCard = document.createElement('div');
+                playerCard.className = 'player-card' + (player.isWinner ? ' winner' : '');
+                playerCard.textContent = `#${player.id}\n❤️ ${player.lives}`;
+                playerCard.onclick = () => toggleWinner(player.id);
+                playersContainer.appendChild(playerCard);
+            });
+        }
+
+        // Basculer l'état gagnant
+        function toggleWinner(playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                player.isWinner = !player.isWinner;
+                renderPlayers();
+            }
+        }
+
+        // Soumettre les gagnants
+        function submitWinners() {
+            players.forEach(player => {
+                if (!player.isWinner && player.lives > 0) {
+                    player.lives -= 1; // Réduction de vie pour les perdants
+                }
+                player.isWinner = false; // Réinitialiser les gagnants après soumission
+            });
+            renderPlayers();
+        }
+
+        // Réinitialiser les vies
+        function resetLives() {
+            players.forEach(player => {
+                player.lives = initialLives;
+                player.isWinner = false;
+            });
+            renderPlayers();
+        }
+
+        // Reconnaissance vocale continue
+        let recognition;
+        let isMicrophoneAuthorized = false;
+
+        function startVoiceRecognition() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
+                return;
+            }
+
+            if (!recognition) {
+                recognition = new webkitSpeechRecognition();
+                recognition.lang = 'fr-FR';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.continuous = true;
+
+                recognition.onstart = () => {
+                    console.log("Reconnaissance vocale démarrée.");
+                };
+
+                recognition.onresult = (event) => {
+                    const result = event.results[event.results.length - 1][0].transcript;
+                    console.log('Reconnaissance vocale:', result);
+
+                    // Extraire les numéros à partir de la phrase
+                    const matches = result.match(/\d+/g);
+                    if (matches) {
+                        matches.forEach(num => {
+                            const playerId = parseInt(num);
+                            const player = players.find(p => p.id === playerId);
+                            if (player) player.isWinner = true;
+                        });
+                        renderPlayers();
+                        alert(`Gagnants détectés : ${matches.join(', ')}`);
+                    } else {
+                        console.log('Aucun numéro détecté dans la phrase.');
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Erreur de reconnaissance vocale:', event.error);
+                    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                        alert("La reconnaissance vocale a été refusée. Veuillez autoriser l'accès au microphone.");
+                        recognition.stop();
+                        isMicrophoneAuthorized = false;
+                    }
+                };
+
+                recognition.onend = () => {
+                    if (isMicrophoneAuthorized) {
+                        recognition.start(); // Redémarre seulement si l'autorisation est donnée
+                    }
+                };
+            }
+
+            // Démarrer la reconnaissance vocale
+            try {
+                recognition.start();
+                isMicrophoneAuthorized = true;
+                alert('La reconnaissance vocale est maintenant active en continu.');
+            } catch (error) {
+                console.error("Erreur lors du démarrage de la reconnaissance vocale :", error);
+            }
+        }
+
+        // Initialiser l'interface
+        renderPlayers();
+    </script>
+</body>
+</html>
