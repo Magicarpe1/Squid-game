@@ -218,7 +218,8 @@
             renderPlayers();
         }
 
-        // --- Dictionnaire pour nombres en lettres ---
+        // Dictionnaire pour nombres en lettres
+        // On ajoute "devis" => 2 comme tu l'as demandé
         const spelledNumbers = {
             'un': 1, 'une': 1,
             'deux': 2, 'de': 2,
@@ -229,10 +230,11 @@
             'sept': 7,
             'huit': 8,
             'neuf': 9,
-            'dix': 10
+            'dix': 10,
+            'devis': 2
         };
 
-        // --- Transfert de vies ---
+        // Transfert de vies
         function transferLives(donorId, receiverId, amount) {
             const donor = players.find(p => p.id === donorId);
             const receiver = players.find(p => p.id === receiverId);
@@ -291,7 +293,6 @@
             };
         }
 
-        // --- Reconnaissance vocale ---
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -309,17 +310,18 @@
                 const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
                 console.log('Reconnaissance vocale:', result);
 
-                // (1) Variantes de "retire moi tous les numéros"
+                // (1) Variantes de "retire moi tous les numéros" + "rupture moi tous les numéros"
                 if (
                     result.includes('retire moi tous les numéros') ||
                     result.includes('retire-moi tous les numéros') ||
-                    result.includes('retiens-moi tous les numéros')
+                    result.includes('retiens-moi tous les numéros') ||
+                    result.includes('rupture moi tous les numéros')
                 ) {
                     players.forEach(player => player.isWinner = false);
                     renderPlayers();
                 }
 
-                // (2) "les autres perdront X vies" (ton code initial)
+                // (2) "les autres perdront X vies"
                 const livesMatch = result.match(/les autres perdront (\d+)/i);
                 if (livesMatch) {
                     const livesToRemove = parseInt(livesMatch[1], 10);
@@ -334,7 +336,7 @@
 
                 // (3) "les autres perdent X vies" (avec dictionnaire)
                 if (result.includes('les autres perdent')) {
-                    const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
+                    const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|\d+)/i;
                     const spelledMatch = result.match(spelledRegex);
                     if (spelledMatch) {
                         let val = spelledMatch[1];
@@ -353,8 +355,9 @@
                     }
                 }
 
-                // (4) "tu peux me transférer X vies du joueur A au joueur B"
-                const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
+                // (4) "tu peux me transférer X vies du joueur A au joueur B" (X = mot ou chiffre)
+                // On inclut 'devis' => 2 dans spelledNumbers
+                const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
                 const spelledTransferMatch = result.match(spelledTransferRegex);
                 if (spelledTransferMatch) {
                     let amount = spelledTransferMatch[1];
@@ -397,4 +400,3 @@
     </script>
 </body>
 </html>
-
