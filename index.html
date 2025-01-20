@@ -48,8 +48,11 @@
           color: #ff3e68;
       }
 
+      /* Agrandir le carré pour qu’il paraisse de taille similaire */
       h1 span.shape-square {
           color: #ff3e68;
+          transform: scale(1.4);
+          display: inline-block;
       }
 
       #players-container {
@@ -162,7 +165,8 @@
       <span class="shape-square">■</span>
       <span>GAME</span>
   </h1>
-  <p>Cliquez sur un joueur pour le marquer comme gagnant.</p>
+  <!-- Remplace l'ancien texte par "À qui le tour ?" -->
+  <p>À qui le tour ?</p>
 
   <div id="players-container"></div>
 
@@ -181,11 +185,9 @@
           isWinner: false,
       }));
 
-      // --- Audio : musique lancée à la 1ère annonce de gagnant, stoppée quand "les autres perdent" ---
+      // --- Audio : musique qui se rejoue à CHAQUE fois qu'on dit "gagnant" ---
       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-      // audio.loop = false; // à toi de voir si tu veux la mettre en boucle
-
-      let musicHasStarted = false; // Pour ne lancer la musique qu'à la 1ère annonce de gagnant
+      // audio.loop = false; // active ou non la boucle
 
       // --- Affiche toutes les cartes joueurs ---
       function renderPlayers() {
@@ -210,7 +212,7 @@
           });
       }
 
-      // --- Marquer / démarcher un joueur comme gagnant ---
+      // --- Marque / démarque un joueur comme gagnant ---
       function toggleWinner(playerId) {
           const player = players.find(p => p.id === playerId);
           if (player) {
@@ -219,7 +221,7 @@
           }
       }
 
-      // --- Soumettre les gagnants manuellement ---
+      // --- Soumet les gagnants manuellement (bouton "Soumettre les gagnants") ---
       function processRound() {
           const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
           players.forEach(player => {
@@ -231,7 +233,7 @@
           renderPlayers();
       }
 
-      // --- Réinitialiser toutes les vies ---
+      // --- Réinitialise toutes les vies (bouton "Réinitialiser les vies") ---
       function resetLives() {
           players.forEach(player => {
               player.lives = 6;
@@ -252,7 +254,8 @@
           'huit': 8,
           'neuf': 9,
           'dix': 10,
-          'devis': 2
+          'devis': 2,
+          'paires': 2 // "paires" => 2
       };
 
       // --- Transfert de vies + animation coeur ---
@@ -297,7 +300,6 @@
           heartEl.textContent = '♥';
           document.body.appendChild(heartEl);
 
-          // Position de départ (centre du donneur)
           heartEl.style.left = donorRect.left + donorRect.width / 2 + 'px';
           heartEl.style.top = donorRect.top + donorRect.height / 2 + 'px';
 
@@ -337,11 +339,10 @@
 
           document.body.appendChild(minusEl);
 
-          // Placer le "-X" environ au-dessus du centre du joueur
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
           minusEl.style.top = rect.top + 'px';
 
-          // Animation : monter un peu + s'évanouir
+          // Animation : monte un peu + disparaît
           minusEl.animate([
               { transform: 'translate(-50%, 0)', opacity: 1 },
               { transform: 'translate(-50%, -50px)', opacity: 0 }
@@ -371,7 +372,7 @@
               const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
               console.log('Reconnaissance vocale:', result);
 
-              // --- (A) Retirer tous les gagnants ---
+              // (A) Retirer tous les gagnants
               if (
                   result.includes('retire moi tous les numéros') ||
                   result.includes('retire-moi tous les numéros') ||
@@ -382,24 +383,25 @@
                   renderPlayers();
               }
 
-              // --- (B) Si la phrase contient "gagnant", on lance la musique (si pas déjà lancée) ---
-              if (!musicHasStarted && result.includes('gagnant')) {
-                  musicHasStarted = true;
-                  // Tentative de lecture audio
+              // (B) "gagnant" => rejouer la musique (à chaque fois)
+              if (result.includes('gagnant')) {
+                  // Arrête si elle joue déjà, puis la relance à zéro
+                  if (!audio.paused) {
+                      audio.pause();
+                      audio.currentTime = 0;
+                  }
                   audio.play().catch(err => {
                       console.warn('Impossible de jouer la musique:', err);
                   });
               }
 
-              // --- (C) "les autres perdront (\d+)" => arrête la musique, soustrait vies, affiche -X
+              // (C) "les autres perdront (\d+)" => arrête la musique, soustrait vies, "-X"
               const perdrontMatch = result.match(/les autres perdront (\d+)/i);
               if (perdrontMatch) {
-                  // On arrête la musique
                   if (!audio.paused) {
                       audio.pause();
                       audio.currentTime = 0;
                   }
-
                   const livesToRemove = parseInt(perdrontMatch[1], 10);
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
@@ -411,15 +413,13 @@
                   renderPlayers();
               }
 
-              // --- (D) "les autres perdent X vies" => arrête la musique, soustrait vies, affiche -X
+              // (D) "les autres perdent X vies" => arrête la musique, soustrait vies, "-X"
               if (result.includes('les autres perdent')) {
-                  // On arrête la musique
                   if (!audio.paused) {
                       audio.pause();
                       audio.currentTime = 0;
                   }
-
-                  const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|\d+)/i;
+                  const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
                   const spelledMatch = result.match(spelledRegex);
                   if (spelledMatch) {
                       let val = spelledMatch[1];
@@ -439,8 +439,25 @@
                   }
               }
 
-              // --- (E) "tu peux me transférer X vies du joueur A au joueur B" ---
-              const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
+              // (E) "les autres paires de vie" => même effet que retirer 2 vies
+              if (result.includes('les autres paires de vie')) {
+                  if (!audio.paused) {
+                      audio.pause();
+                      audio.currentTime = 0;
+                  }
+                  const val = 2;
+                  players.forEach(player => {
+                      if (!player.isWinner && player.lives > 0) {
+                          player.lives -= val;
+                          showMinusLife(player.id, val);
+                      }
+                      player.isWinner = false;
+                  });
+                  renderPlayers();
+              }
+
+              // (F) "tu peux me transférer X vies du joueur A au joueur B"
+              const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
               const spelledTransferMatch = result.match(spelledTransferRegex);
               if (spelledTransferMatch) {
                   let amount = spelledTransferMatch[1];
@@ -456,7 +473,7 @@
                   transferLives(donorId, receiverId, amount);
               }
 
-              // --- (F) Sélectionner des gagnants par numéro ---
+              // (G) Sélectionner des gagnants par numéro
               const matches = result.match(/\d+/g);
               if (matches) {
                   matches.forEach(num => {
