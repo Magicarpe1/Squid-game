@@ -132,7 +132,7 @@
             color: #fff;
         }
 
-        /* --- AJOUT pour l'animation du coeur --- */
+        /* Animation du coeur */
         .heart-animation {
             position: absolute;
             font-size: 2rem;
@@ -218,8 +218,7 @@
             renderPlayers();
         }
 
-        // --- AJOUT : Dictionnaire pour reconnaitre quelques nombres en lettres ---
-        // Ici j'ajoute "de" qui sera traité comme "2" (selon ton constat)
+        // --- Dictionnaire pour nombres en lettres ---
         const spelledNumbers = {
             'un': 1, 'une': 1,
             'deux': 2, 'de': 2,
@@ -233,7 +232,7 @@
             'dix': 10
         };
 
-        // --- AJOUT : fonction de transfert de vies ---
+        // --- Transfert de vies ---
         function transferLives(donorId, receiverId, amount) {
             const donor = players.find(p => p.id === donorId);
             const receiver = players.find(p => p.id === receiverId);
@@ -247,21 +246,17 @@
                 return;
             }
 
-            // Transfert
             donor.lives -= amount;
             receiver.lives += amount;
-
             renderPlayers();
             animateHeart(donorId, receiverId);
         }
 
-        // --- AJOUT : animation du coeur ---
         function animateHeart(donorId, receiverId) {
             const container = document.getElementById('players-container').children;
             let donorCard = null;
             let receiverCard = null;
 
-            // Trouver les <div> correspondant aux ids
             for (let card of container) {
                 const numberDiv = card.querySelector('.player-card-number');
                 const cardId = parseInt(numberDiv.textContent);
@@ -279,15 +274,12 @@
             heartEl.textContent = '♥';
             document.body.appendChild(heartEl);
 
-            // Position de départ = centre de la carte donneur
             heartEl.style.left = donorRect.left + donorRect.width / 2 + 'px';
             heartEl.style.top = donorRect.top + donorRect.height / 2 + 'px';
 
-            // Distance à parcourir
             const deltaX = (receiverRect.left + receiverRect.width / 2) - (donorRect.left + donorRect.width / 2);
             const deltaY = (receiverRect.top + receiverRect.height / 2) - (donorRect.top + donorRect.height / 2);
 
-            // Animation
             heartEl.animate([
                 { transform: 'translate(0, 0)', opacity: 1 },
                 { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 1 }
@@ -299,6 +291,7 @@
             };
         }
 
+        // --- Reconnaissance vocale ---
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -310,23 +303,26 @@
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
             recognition.continuous = true;
-
             recognition.start();
 
             recognition.onresult = (event) => {
                 const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
                 console.log('Reconnaissance vocale:', result);
 
-                // --- 1) "retire moi tous les numéros" ---
-                if (result.includes('retire moi tous les numéros')) {
+                // (1) Variantes de "retire moi tous les numéros"
+                if (
+                    result.includes('retire moi tous les numéros') ||
+                    result.includes('retire-moi tous les numéros') ||
+                    result.includes('retiens-moi tous les numéros')
+                ) {
                     players.forEach(player => player.isWinner = false);
                     renderPlayers();
                 }
 
-                // --- 2) "les autres perdront X vies" (ton code existant) ---
+                // (2) "les autres perdront X vies" (ton code initial)
                 const livesMatch = result.match(/les autres perdront (\d+)/i);
                 if (livesMatch) {
-                    const livesToRemove = parseInt(livesMatch[1]);
+                    const livesToRemove = parseInt(livesMatch[1], 10);
                     players.forEach(player => {
                         if (!player.isWinner && player.lives > 0) {
                             player.lives -= livesToRemove;
@@ -336,51 +332,53 @@
                     renderPlayers();
                 }
 
-                // --- 3) "les autres perdent X vies" (AJOUT : pour chiffres + mots) ---
-                // On teste si la phrase contient "les autres perdent"
+                // (3) "les autres perdent X vies" (avec dictionnaire)
                 if (result.includes('les autres perdent')) {
-                    // On capture soit un mot (ex. 'deux', 'de') soit un chiffre \d+
                     const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
                     const spelledMatch = result.match(spelledRegex);
                     if (spelledMatch) {
-                        let val = spelledMatch[1]; // ex: "deux", "de", "2"
-
-                        // Conversion si c'est un mot
+                        let val = spelledMatch[1];
                         if (spelledNumbers[val] !== undefined) {
                             val = spelledNumbers[val];
                         } else {
                             val = parseInt(val, 10);
                         }
-
                         players.forEach(player => {
                             if (!player.isWinner && player.lives > 0) {
                                 player.lives -= val;
                             }
-                            // On peut (ou non) remettre isWinner à false.
-                            // A priori tu semblais vouloir le réinitialiser :
                             player.isWinner = false;
                         });
                         renderPlayers();
                     }
                 }
 
-                // --- 4) NOUVELLE commande : "tu peux me transférer X vies du joueur A au joueur B" ---
-                const transferRegex = /tu peux me transférer (\d+) vies? du joueur (\d+) au joueur (\d+)/i;
-                const transferMatch = result.match(transferRegex);
-                if (transferMatch) {
-                    const amount = parseInt(transferMatch[1], 10);
-                    const donorId = parseInt(transferMatch[2], 10);
-                    const receiverId = parseInt(transferMatch[3], 10);
+                // (4) "tu peux me transférer X vies du joueur A au joueur B"
+                const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
+                const spelledTransferMatch = result.match(spelledTransferRegex);
+                if (spelledTransferMatch) {
+                    let amount = spelledTransferMatch[1];
+                    if (spelledNumbers[amount] !== undefined) {
+                        amount = spelledNumbers[amount];
+                    } else {
+                        amount = parseInt(amount, 10);
+                    }
+
+                    const donorId = parseInt(spelledTransferMatch[2], 10);
+                    const receiverId = parseInt(spelledTransferMatch[3], 10);
+
                     transferLives(donorId, receiverId, amount);
                 }
 
-                // --- 5) Sélectionner des gagnants par numéro (ton code existant) ---
+                // (5) Sélectionner des gagnants par numéro
                 const matches = result.match(/\d+/g);
                 if (matches) {
                     matches.forEach(num => {
-                        const playerId = parseInt(num);
+                        const playerId = parseInt(num, 10);
                         const player = players.find(p => p.id === playerId);
-                        if (player) player.isWinner = true;
+                        if (player) {
+                            player.isWinner = true;
+                        }
                     });
                     renderPlayers();
                 }
@@ -399,3 +397,4 @@
     </script>
 </body>
 </html>
+
