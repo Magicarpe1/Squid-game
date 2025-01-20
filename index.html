@@ -131,6 +131,16 @@
             background-color: #202020;
             color: #fff;
         }
+
+        /* --- AJOUT pour l'animation du coeur --- */
+        .heart-animation {
+            position: absolute;
+            font-size: 2rem;
+            color: red;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -153,14 +163,12 @@
     </div>
 
     <script>
-        // --- Tableau des joueurs ---
         const players = Array.from({ length: 60 }, (_, i) => ({
             id: i + 1,
             lives: 6,
             isWinner: false,
         }));
 
-        // --- Affiche toutes les cartes joueurs ---
         function renderPlayers() {
             const container = document.getElementById('players-container');
             container.innerHTML = '';
@@ -183,7 +191,6 @@
             });
         }
 
-        // --- Marque / démilque un joueur comme gagnant ---
         function toggleWinner(playerId) {
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -192,22 +199,17 @@
             }
         }
 
-        // --- Soumet les gagnants manuellement (bouton "Soumettre les gagnants") ---
         function processRound() {
             const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
-            // Tous ceux qui ne sont PAS gagnants perdent "livesToRemove" vies
             players.forEach(player => {
                 if (!player.isWinner && player.lives > 0) {
                     player.lives -= livesToRemove;
-                    if (player.lives < 0) player.lives = 0;
                 }
-                // On réinitialise le statut gagnant
                 player.isWinner = false;
             });
             renderPlayers();
         }
 
-        // --- Réinitialise toutes les vies (bouton "Réinitialiser les vies") ---
         function resetLives() {
             players.forEach(player => {
                 player.lives = 6;
@@ -216,10 +218,11 @@
             renderPlayers();
         }
 
-        // Dictionnaire pour reconnaître quelques nombres en toutes lettres
+        // --- AJOUT : Dictionnaire pour reconnaitre quelques nombres en lettres ---
+        // Ici j'ajoute "de" qui sera traité comme "2" (selon ton constat)
         const spelledNumbers = {
-            'un': 1,   'une': 1,
-            'deux': 2,
+            'un': 1, 'une': 1,
+            'deux': 2, 'de': 2,
             'trois': 3,
             'quatre': 4,
             'cinq': 5,
@@ -230,7 +233,72 @@
             'dix': 10
         };
 
-        // --- Active la reconnaissance vocale ---
+        // --- AJOUT : fonction de transfert de vies ---
+        function transferLives(donorId, receiverId, amount) {
+            const donor = players.find(p => p.id === donorId);
+            const receiver = players.find(p => p.id === receiverId);
+
+            if (!donor || !receiver) {
+                console.warn("Donneur ou receveur introuvable.");
+                return;
+            }
+            if (donor.lives < amount) {
+                console.warn(`Le joueur ${donorId} n'a pas assez de vies à donner.`);
+                return;
+            }
+
+            // Transfert
+            donor.lives -= amount;
+            receiver.lives += amount;
+
+            renderPlayers();
+            animateHeart(donorId, receiverId);
+        }
+
+        // --- AJOUT : animation du coeur ---
+        function animateHeart(donorId, receiverId) {
+            const container = document.getElementById('players-container').children;
+            let donorCard = null;
+            let receiverCard = null;
+
+            // Trouver les <div> correspondant aux ids
+            for (let card of container) {
+                const numberDiv = card.querySelector('.player-card-number');
+                const cardId = parseInt(numberDiv.textContent);
+                if (cardId === donorId) donorCard = card;
+                if (cardId === receiverId) receiverCard = card;
+            }
+
+            if (!donorCard || !receiverCard) return;
+
+            const donorRect = donorCard.getBoundingClientRect();
+            const receiverRect = receiverCard.getBoundingClientRect();
+
+            const heartEl = document.createElement('div');
+            heartEl.className = 'heart-animation';
+            heartEl.textContent = '♥';
+            document.body.appendChild(heartEl);
+
+            // Position de départ = centre de la carte donneur
+            heartEl.style.left = donorRect.left + donorRect.width / 2 + 'px';
+            heartEl.style.top = donorRect.top + donorRect.height / 2 + 'px';
+
+            // Distance à parcourir
+            const deltaX = (receiverRect.left + receiverRect.width / 2) - (donorRect.left + donorRect.width / 2);
+            const deltaY = (receiverRect.top + receiverRect.height / 2) - (donorRect.top + donorRect.height / 2);
+
+            // Animation
+            heartEl.animate([
+                { transform: 'translate(0, 0)', opacity: 1 },
+                { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 1 }
+            ], {
+                duration: 1000,
+                easing: 'ease-in-out'
+            }).onfinish = () => {
+                document.body.removeChild(heartEl);
+            };
+        }
+
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -243,70 +311,70 @@
             recognition.maxAlternatives = 1;
             recognition.continuous = true;
 
-            // Démarre la reconnaissance
             recognition.start();
 
-            // --- À chaque résultat de la reconnaissance ---
             recognition.onresult = (event) => {
-                const result = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+                const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
                 console.log('Reconnaissance vocale:', result);
 
-                // (1) Retire moi tous les numéros
+                // --- 1) "retire moi tous les numéros" ---
                 if (result.includes('retire moi tous les numéros')) {
                     players.forEach(player => player.isWinner = false);
                     renderPlayers();
-                    return;
                 }
 
-                // (2) Sélectionner des joueurs gagnants (si on dit le mot "gagnant")
-                //     On récupère tous les chiffres pour les marquer comme winners
-                if (result.includes('gagnant')) {
-                    const winnerMatches = result.match(/\d+/g);
-                    if (winnerMatches) {
-                        winnerMatches.forEach(num => {
-                            const playerId = parseInt(num);
-                            const player = players.find(p => p.id === playerId);
-                            if (player) {
-                                player.isWinner = true;
-                            }
-                        });
-                        renderPlayers();
-                    }
-                    // Pas de return ici, on autorise la suite (ex: "gagnant 3 5 et les autres perdent 2 vies")
+                // --- 2) "les autres perdront X vies" (ton code existant) ---
+                const livesMatch = result.match(/les autres perdront (\d+)/i);
+                if (livesMatch) {
+                    const livesToRemove = parseInt(livesMatch[1]);
+                    players.forEach(player => {
+                        if (!player.isWinner && player.lives > 0) {
+                            player.lives -= livesToRemove;
+                        }
+                        player.isWinner = false;
+                    });
+                    renderPlayers();
                 }
 
-                // (3) Les autres perdent X vies
-                //     X peut être un chiffre (ex. "2") ou un mot (ex. "deux")
+                // --- 3) "les autres perdent X vies" (AJOUT : pour chiffres + mots) ---
+                // On teste si la phrase contient "les autres perdent"
                 if (result.includes('les autres perdent')) {
-                    // On capture soit un mot (un|une|deux...|dix) soit un chiffre \d+
-                    const lostMatch = result.match(/les autres perdent (un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i);
-                    if (lostMatch) {
-                        let livesToRemove = lostMatch[1];  // "deux" ou "2", etc.
+                    // On capture soit un mot (ex. 'deux', 'de') soit un chiffre \d+
+                    const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
+                    const spelledMatch = result.match(spelledRegex);
+                    if (spelledMatch) {
+                        let val = spelledMatch[1]; // ex: "deux", "de", "2"
 
-                        // Conversion du mot en nombre si nécessaire
-                        if (spelledNumbers[livesToRemove] !== undefined) {
-                            livesToRemove = spelledNumbers[livesToRemove];
+                        // Conversion si c'est un mot
+                        if (spelledNumbers[val] !== undefined) {
+                            val = spelledNumbers[val];
                         } else {
-                            // Sinon, c'est un chiffre
-                            livesToRemove = parseInt(livesToRemove, 10);
+                            val = parseInt(val, 10);
                         }
 
-                        // Seuls ceux qui ne sont pas gagnants perdent
                         players.forEach(player => {
                             if (!player.isWinner && player.lives > 0) {
-                                player.lives -= livesToRemove;
-                                if (player.lives < 0) player.lives = 0;
+                                player.lives -= val;
                             }
-                            // On ne remet pas isWinner à false pour garder les gagnants
+                            // On peut (ou non) remettre isWinner à false.
+                            // A priori tu semblais vouloir le réinitialiser :
+                            player.isWinner = false;
                         });
                         renderPlayers();
                     }
-                    return;
                 }
 
-                // (4) [Optionnel] Si on n'a pas dit "gagnant", mais qu'on a quand même des nombres,
-                //     on peut les interpréter comme joueurs gagnants. À toi de voir si tu le veux.
-                /*
+                // --- 4) NOUVELLE commande : "tu peux me transférer X vies du joueur A au joueur B" ---
+                const transferRegex = /tu peux me transférer (\d+) vies? du joueur (\d+) au joueur (\d+)/i;
+                const transferMatch = result.match(transferRegex);
+                if (transferMatch) {
+                    const amount = parseInt(transferMatch[1], 10);
+                    const donorId = parseInt(transferMatch[2], 10);
+                    const receiverId = parseInt(transferMatch[3], 10);
+                    transferLives(donorId, receiverId, amount);
+                }
+
+                // --- 5) Sélectionner des gagnants par numéro (ton code existant) ---
                 const matches = result.match(/\d+/g);
                 if (matches) {
                     matches.forEach(num => {
@@ -316,21 +384,17 @@
                     });
                     renderPlayers();
                 }
-                */
             };
 
-            // En cas d'erreur
             recognition.onerror = (event) => {
                 console.error('Erreur de reconnaissance vocale:', event.error);
             };
 
-            // Quand ça se termine (automatiquement ou pas), on relance
             recognition.onend = () => {
                 recognition.start();
             };
         }
 
-        // Lance l'affichage initial
         renderPlayers();
     </script>
 </body>
