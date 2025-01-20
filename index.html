@@ -48,7 +48,7 @@
           color: #ff3e68;
       }
 
-      /* Agrandir le carré pour qu’il paraisse de taille similaire */
+      /* Agrandir le carré pour qu’il paraisse plus proche en taille */
       h1 span.shape-square {
           color: #ff3e68;
           transform: scale(1.4);
@@ -165,7 +165,7 @@
       <span class="shape-square">■</span>
       <span>GAME</span>
   </h1>
-  <!-- Remplace l'ancien texte par "À qui le tour ?" -->
+  <!-- Remplace le texte par "À qui le tour ?" -->
   <p>À qui le tour ?</p>
 
   <div id="players-container"></div>
@@ -185,9 +185,51 @@
           isWinner: false,
       }));
 
-      // --- Audio : musique qui se rejoue à CHAQUE fois qu'on dit "gagnant" ---
+      // === AUDIO avec fade-in / fade-out ===
       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-      // audio.loop = false; // active ou non la boucle
+      audio.volume = 1.0; // Volume max
+      let fadeInterval = null;
+
+      // Démarre la musique avec un fade-in
+      function playAudioFadeIn() {
+          // On arrête toute fade en cours
+          if (fadeInterval) clearInterval(fadeInterval);
+
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = 0; // commence à 0
+
+          audio.play().catch(err => {
+              console.warn("Impossible de jouer la musique :", err);
+          });
+
+          // Incrémente volume par paliers
+          fadeInterval = setInterval(() => {
+              if (audio.volume < 1) {
+                  audio.volume = Math.min(audio.volume + 0.1, 1);
+              } else {
+                  clearInterval(fadeInterval);
+                  fadeInterval = null;
+              }
+          }, 200); // toutes les 200ms
+      }
+
+      // Arrête la musique avec un fade-out
+      function stopAudioFadeOut() {
+          if (fadeInterval) clearInterval(fadeInterval);
+
+          fadeInterval = setInterval(() => {
+              if (audio.volume > 0.1) {
+                  audio.volume -= 0.1;
+              } else {
+                  // On coupe
+                  audio.pause();
+                  audio.currentTime = 0;
+                  clearInterval(fadeInterval);
+                  fadeInterval = null;
+              }
+          }, 200);
+      }
 
       // --- Affiche toutes les cartes joueurs ---
       function renderPlayers() {
@@ -255,7 +297,7 @@
           'neuf': 9,
           'dix': 10,
           'devis': 2,
-          'paires': 2 // "paires" => 2
+          'paires': 2
       };
 
       // --- Transfert de vies + animation coeur ---
@@ -342,7 +384,7 @@
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
           minusEl.style.top = rect.top + 'px';
 
-          // Animation : monte un peu + disparaît
+          // Animation : monter + disparaître
           minusEl.animate([
               { transform: 'translate(-50%, 0)', opacity: 1 },
               { transform: 'translate(-50%, -50px)', opacity: 0 }
@@ -383,25 +425,16 @@
                   renderPlayers();
               }
 
-              // (B) "gagnant" => rejouer la musique (à chaque fois)
+              // (B) "gagnant" => fade-in de la musique
               if (result.includes('gagnant')) {
-                  // Arrête si elle joue déjà, puis la relance à zéro
-                  if (!audio.paused) {
-                      audio.pause();
-                      audio.currentTime = 0;
-                  }
-                  audio.play().catch(err => {
-                      console.warn('Impossible de jouer la musique:', err);
-                  });
+                  stopAudioFadeOut(); // stoppe fade-out si en cours
+                  playAudioFadeIn();  // relance la musique
               }
 
-              // (C) "les autres perdront (\d+)" => arrête la musique, soustrait vies, "-X"
+              // (C) "les autres perdront (\d+)" => fade-out, soustrait vies, "-X"
               const perdrontMatch = result.match(/les autres perdront (\d+)/i);
               if (perdrontMatch) {
-                  if (!audio.paused) {
-                      audio.pause();
-                      audio.currentTime = 0;
-                  }
+                  stopAudioFadeOut();
                   const livesToRemove = parseInt(perdrontMatch[1], 10);
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
@@ -413,12 +446,9 @@
                   renderPlayers();
               }
 
-              // (D) "les autres perdent X vies" => arrête la musique, soustrait vies, "-X"
+              // (D) "les autres perdent X vies" => fade-out, soustrait vies, "-X"
               if (result.includes('les autres perdent')) {
-                  if (!audio.paused) {
-                      audio.pause();
-                      audio.currentTime = 0;
-                  }
+                  stopAudioFadeOut();
                   const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
                   const spelledMatch = result.match(spelledRegex);
                   if (spelledMatch) {
@@ -439,12 +469,9 @@
                   }
               }
 
-              // (E) "les autres paires de vie" => même effet que retirer 2 vies
+              // (E) "les autres paires de vie" => retire 2 vies
               if (result.includes('les autres paires de vie')) {
-                  if (!audio.paused) {
-                      audio.pause();
-                      audio.currentTime = 0;
-                  }
+                  stopAudioFadeOut();
                   const val = 2;
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
@@ -456,8 +483,9 @@
                   renderPlayers();
               }
 
-              // (F) "tu peux me transférer X vies du joueur A au joueur B"
-              const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+) vies? du joueur (\d+) au joueur (\d+)/i;
+              // (F) "tu peux me transférer X vies du joueur A (au|ou) joueur B"
+              // Ajout du (au|ou) pour tolérer la confusion "au" / "ou"
+              const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+) vies? du joueur (\d+) (au|ou) joueur (\d+)/i;
               const spelledTransferMatch = result.match(spelledTransferRegex);
               if (spelledTransferMatch) {
                   let amount = spelledTransferMatch[1];
@@ -468,7 +496,8 @@
                   }
 
                   const donorId = parseInt(spelledTransferMatch[2], 10);
-                  const receiverId = parseInt(spelledTransferMatch[3], 10);
+                  // spelledTransferMatch[3] => "au" ou "ou", on n'en a pas besoin
+                  const receiverId = parseInt(spelledTransferMatch[4], 10);
 
                   transferLives(donorId, receiverId, amount);
               }
@@ -496,7 +525,7 @@
           };
       }
 
-      // Affichage initial
+      // Lance l'affichage initial
       renderPlayers();
   </script>
 </body>
