@@ -216,6 +216,20 @@
             renderPlayers();
         }
 
+        // Dictionnaire pour reconnaître quelques nombres en toutes lettres
+        const spelledNumbers = {
+            'un': 1,   'une': 1,
+            'deux': 2,
+            'trois': 3,
+            'quatre': 4,
+            'cinq': 5,
+            'six': 6,
+            'sept': 7,
+            'huit': 8,
+            'neuf': 9,
+            'dix': 10
+        };
+
         // --- Active la reconnaissance vocale ---
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
@@ -262,12 +276,23 @@
                 }
 
                 // (3) Les autres perdent X vies
+                //     X peut être un chiffre (ex. "2") ou un mot (ex. "deux")
                 if (result.includes('les autres perdent')) {
-                    const lostMatch = result.match(/les autres perdent (\d+)/i);
+                    // On capture soit un mot (un|une|deux...|dix) soit un chiffre \d+
+                    const lostMatch = result.match(/les autres perdent (un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i);
                     if (lostMatch) {
-                        const livesToRemove = parseInt(lostMatch[1]);
+                        let livesToRemove = lostMatch[1];  // "deux" ou "2", etc.
+
+                        // Conversion du mot en nombre si nécessaire
+                        if (spelledNumbers[livesToRemove] !== undefined) {
+                            livesToRemove = spelledNumbers[livesToRemove];
+                        } else {
+                            // Sinon, c'est un chiffre
+                            livesToRemove = parseInt(livesToRemove, 10);
+                        }
+
+                        // Seuls ceux qui ne sont pas gagnants perdent
                         players.forEach(player => {
-                            // Seuls ceux qui ne sont pas gagnants perdent
                             if (!player.isWinner && player.lives > 0) {
                                 player.lives -= livesToRemove;
                                 if (player.lives < 0) player.lives = 0;
@@ -279,10 +304,8 @@
                     return;
                 }
 
-                // (4) Si on n'a pas dit "gagnant" mais qu'on a quand même des nombres,
-                //     on peut les interpréter comme joueurs gagnants (optionnel).
-                //     Selon ton besoin, tu peux laisser ou supprimer cette partie.
-                //     Par défaut, on le commente pour ne pas marquer n'importe quel nombre.
+                // (4) [Optionnel] Si on n'a pas dit "gagnant", mais qu'on a quand même des nombres,
+                //     on peut les interpréter comme joueurs gagnants. À toi de voir si tu le veux.
                 /*
                 const matches = result.match(/\d+/g);
                 if (matches) {
