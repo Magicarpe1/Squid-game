@@ -153,12 +153,14 @@
     </div>
 
     <script>
+        // --- Tableau des joueurs ---
         const players = Array.from({ length: 60 }, (_, i) => ({
             id: i + 1,
             lives: 6,
             isWinner: false,
         }));
 
+        // --- Affiche toutes les cartes joueurs ---
         function renderPlayers() {
             const container = document.getElementById('players-container');
             container.innerHTML = '';
@@ -181,6 +183,7 @@
             });
         }
 
+        // --- Marque / démilque un joueur comme gagnant ---
         function toggleWinner(playerId) {
             const player = players.find(p => p.id === playerId);
             if (player) {
@@ -189,17 +192,22 @@
             }
         }
 
+        // --- Soumet les gagnants manuellement (bouton "Soumettre les gagnants") ---
         function processRound() {
             const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
+            // Tous ceux qui ne sont PAS gagnants perdent "livesToRemove" vies
             players.forEach(player => {
                 if (!player.isWinner && player.lives > 0) {
                     player.lives -= livesToRemove;
+                    if (player.lives < 0) player.lives = 0;
                 }
+                // On réinitialise le statut gagnant
                 player.isWinner = false;
             });
             renderPlayers();
         }
 
+        // --- Réinitialise toutes les vies (bouton "Réinitialiser les vies") ---
         function resetLives() {
             players.forEach(player => {
                 player.lives = 6;
@@ -208,6 +216,7 @@
             renderPlayers();
         }
 
+        // --- Active la reconnaissance vocale ---
         function startVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -220,29 +229,61 @@
             recognition.maxAlternatives = 1;
             recognition.continuous = true;
 
+            // Démarre la reconnaissance
             recognition.start();
 
+            // --- À chaque résultat de la reconnaissance ---
             recognition.onresult = (event) => {
-                const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                const result = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
                 console.log('Reconnaissance vocale:', result);
 
+                // (1) Retire moi tous les numéros
                 if (result.includes('retire moi tous les numéros')) {
                     players.forEach(player => player.isWinner = false);
                     renderPlayers();
+                    return;
                 }
 
-                const livesMatch = result.match(/les autres perdront (\d+)/i);
-                if (livesMatch) {
-                    const livesToRemove = parseInt(livesMatch[1]);
-                    players.forEach(player => {
-                        if (!player.isWinner && player.lives > 0) {
-                            player.lives -= livesToRemove;
-                        }
-                        player.isWinner = false;
-                    });
-                    renderPlayers();
+                // (2) Sélectionner des joueurs gagnants (si on dit le mot "gagnant")
+                //     On récupère tous les chiffres pour les marquer comme winners
+                if (result.includes('gagnant')) {
+                    const winnerMatches = result.match(/\d+/g);
+                    if (winnerMatches) {
+                        winnerMatches.forEach(num => {
+                            const playerId = parseInt(num);
+                            const player = players.find(p => p.id === playerId);
+                            if (player) {
+                                player.isWinner = true;
+                            }
+                        });
+                        renderPlayers();
+                    }
+                    // Pas de return ici, on autorise la suite (ex: "gagnant 3 5 et les autres perdent 2 vies")
                 }
 
+                // (3) Les autres perdent X vies
+                if (result.includes('les autres perdent')) {
+                    const lostMatch = result.match(/les autres perdent (\d+)/i);
+                    if (lostMatch) {
+                        const livesToRemove = parseInt(lostMatch[1]);
+                        players.forEach(player => {
+                            // Seuls ceux qui ne sont pas gagnants perdent
+                            if (!player.isWinner && player.lives > 0) {
+                                player.lives -= livesToRemove;
+                                if (player.lives < 0) player.lives = 0;
+                            }
+                            // On ne remet pas isWinner à false pour garder les gagnants
+                        });
+                        renderPlayers();
+                    }
+                    return;
+                }
+
+                // (4) Si on n'a pas dit "gagnant" mais qu'on a quand même des nombres,
+                //     on peut les interpréter comme joueurs gagnants (optionnel).
+                //     Selon ton besoin, tu peux laisser ou supprimer cette partie.
+                //     Par défaut, on le commente pour ne pas marquer n'importe quel nombre.
+                /*
                 const matches = result.match(/\d+/g);
                 if (matches) {
                     matches.forEach(num => {
@@ -252,17 +293,21 @@
                     });
                     renderPlayers();
                 }
+                */
             };
 
+            // En cas d'erreur
             recognition.onerror = (event) => {
                 console.error('Erreur de reconnaissance vocale:', event.error);
             };
 
+            // Quand ça se termine (automatiquement ou pas), on relance
             recognition.onend = () => {
                 recognition.start();
             };
         }
 
+        // Lance l'affichage initial
         renderPlayers();
     </script>
 </body>
