@@ -13,6 +13,7 @@
           font-family: "PlayerFont";
           src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
       }
+
       body {
           font-family: "GameOfSquids", sans-serif;
           background-color: #101010;
@@ -21,6 +22,7 @@
           margin: 0;
           padding: 20px;
       }
+
       h1 {
           font-size: 3rem;
           margin: 20px 0;
@@ -30,29 +32,35 @@
           gap: 10px;
           color: white;
       }
+
       h1 span {
           display: inline-block;
           font-family: "GameOfSquids", sans-serif;
           font-size: 3rem;
       }
+
       h1 span.shape-circle {
           color: #ff3e68;
       }
+
       h1 span.shape-triangle {
           color: #ff3e68;
       }
+
       /* Agrandir le carré pour qu’il paraisse plus proche en taille */
       h1 span.shape-square {
           color: #ff3e68;
           transform: scale(1.4);
           display: inline-block;
       }
+
       #players-container {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
           gap: 10px;
       }
+
       .player-card {
           width: 80px;
           height: 120px;
@@ -67,10 +75,12 @@
           font-family: "PlayerFont", sans-serif;
           position: relative;
       }
+
       .player-card.active {
           border-color: limegreen;
           background-color: #0a0;
       }
+
       .player-card-number {
           font-size: 2rem;
           color: white;
@@ -79,11 +89,18 @@
           border: 2px solid white;
           border-radius: 5px;
       }
+
       .player-lives {
           font-size: 1.2rem;
           color: white;
           margin-top: 5px;
       }
+
+      /* --- Boutons plus bas --- */
+      .buttons-container {
+          margin-top: 50px;  /* Ajuste cette valeur si tu veux les descendre plus encore */
+      }
+
       button {
           padding: 10px 20px;
           font-size: 1.2rem;
@@ -93,6 +110,7 @@
           margin: 20px 10px;
           font-family: "GameOfSquids", sans-serif;
       }
+
       #submit-btn {
           background-color: #ff3e68;
           color: white;
@@ -100,6 +118,7 @@
       #submit-btn:hover {
           background-color: #c32d4e;
       }
+
       #reset-btn {
           background-color: #32cd32;
           color: white;
@@ -107,6 +126,7 @@
       #reset-btn:hover {
           background-color: #228b22;
       }
+
       #lives-input {
           padding: 10px;
           font-size: 1.2rem;
@@ -116,6 +136,7 @@
           background-color: #202020;
           color: #fff;
       }
+
       /* Animation du coeur */
       .heart-animation {
           position: absolute;
@@ -125,6 +146,7 @@
           pointer-events: none;
           opacity: 1;
       }
+
       /* Animation du "-X" lors de la perte de vie */
       .minus-life {
           position: absolute;
@@ -150,7 +172,8 @@
 
   <div id="players-container"></div>
 
-  <div>
+  <!-- Conteneur pour les boutons, descendu via .buttons-container -->
+  <div class="buttons-container">
       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
       <button id="reset-btn" onclick="resetLives()">Réinitialiser les vies</button>
@@ -158,8 +181,8 @@
   </div>
 
   <script>
-      // --- Tableau des joueurs ---
-      const players = Array.from({ length: 60 }, (_, i) => ({
+      // --- Tableau des joueurs (65 au lieu de 60) ---
+      const players = Array.from({ length: 65 }, (_, i) => ({
           id: i + 1,
           lives: 6,
           isWinner: false,
@@ -352,13 +375,11 @@
           if (!card) return;
 
           const rect = card.getBoundingClientRect();
-
           const minusEl = document.createElement('div');
           minusEl.className = 'minus-life';
           minusEl.textContent = `-${lostValue}`;
 
           document.body.appendChild(minusEl);
-
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
           minusEl.style.top = rect.top + 'px';
 
@@ -408,7 +429,7 @@
                   playAudioFadeIn();
               }
 
-              // (C) "les autres perdront (\d+)" => fade-out, soustrait vies, "-X"
+              // (C) "les autres perdront (\d+)"
               const perdrontMatch = result.match(/les autres perdront (\d+)/i);
               if (perdrontMatch) {
                   stopAudioFadeOut();
@@ -423,7 +444,7 @@
                   renderPlayers();
               }
 
-              // (D) "les autres perdent X vies" => fade-out, soustrait vies, "-X"
+              // (D) "les autres perdent X vies"
               if (result.includes('les autres perdent')) {
                   stopAudioFadeOut();
                   const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
@@ -460,35 +481,40 @@
                   renderPlayers();
               }
 
-              // (F) NOUVELLE LOGIQUE DE TRANSFERT (plus flexible)
-              // Si la phrase contient "tu peux me transférer", on:
-              // 1) Cherche le PREMIER mot ou chiffre => c'est l'amount
-              // 2) On cherche ensuite DEUX nombres => le 1er = donor, le 2eme = receiver
+              // (E BIS) "les autres paires de devis" => retire 2 vies
+              if (result.includes('les autres paires de devis')) {
+                  stopAudioFadeOut();
+                  const val = 2; // on retire 2, comme demandé
+                  players.forEach(player => {
+                      if (!player.isWinner && player.lives > 0) {
+                          player.lives -= val;
+                          showMinusLife(player.id, val);
+                      }
+                      player.isWinner = false;
+                  });
+                  renderPlayers();
+              }
+
+              // (F) "tu peux me transférer" -> logique flexible
               if (result.includes('tu peux me transférer')) {
-                  // 1) Cherche un mot/chiffre pour l'amount
                   const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
-                  if (!amountMatch) {
-                      console.warn("Pas trouvé de quantité pour le transfert.");
-                      return;
-                  }
+                  if (!amountMatch) return;
+
                   let amountRaw = amountMatch[1].toLowerCase();
                   let amountVal = spelledNumbers[amountRaw] !== undefined
                       ? spelledNumbers[amountRaw]
                       : parseInt(amountRaw, 10);
 
-                  // 2) Cherche AU MOINS deux nombres distincts (donor, receiver)
                   const digits = result.match(/\d+/g);
                   if (!digits || digits.length < 2) {
                       console.warn("Pas assez de nombres pour détecter donneur et receveur.");
                       return;
                   }
-
-                  // 1er nombre = donor, 2e = receiver
                   const donorId = parseInt(digits[0], 10);
                   const receiverId = parseInt(digits[1], 10);
 
                   transferLives(donorId, receiverId, amountVal);
-                  return; // évite de marquer par mégarde les joueurs comme gagnants
+                  return;
               }
 
               // (G) Sélectionner des gagnants par numéro
