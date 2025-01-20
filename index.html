@@ -96,9 +96,9 @@
           margin-top: 5px;
       }
 
-      /* --- Boutons plus bas --- */
+      /* --- Boutons bien plus bas --- */
       .buttons-container {
-          margin-top: 50px;  /* Ajuste cette valeur si tu veux les descendre plus encore */
+          margin-top: 200px;  /* Ajuste cette valeur si tu veux les descendre encore plus */
       }
 
       button {
@@ -176,7 +176,8 @@
   <div class="buttons-container">
       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
-      <button id="reset-btn" onclick="resetLives()">Réinitialiser les vies</button>
+      <!-- Au lieu de resetLives() direct, on met confirmReset() -->
+      <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="voice-btn" onclick="startVoiceRecognition()">Activer la Reconnaissance Vocale</button>
   </div>
 
@@ -275,7 +276,15 @@
           renderPlayers();
       }
 
-      // --- Réinitialise toutes les vies (bouton "Réinitialiser les vies") ---
+      // --- Fenêtre de confirmation avant réinitialisation ---
+      function confirmReset() {
+          const sure = confirm("Êtes-vous sûr de vouloir réinitialiser toutes les vies ?");
+          if (sure) {
+              resetLives();
+          }
+      }
+
+      // --- Réinitialise toutes les vies (appelée après confirmation) ---
       function resetLives() {
           players.forEach(player => {
               player.lives = 6;
@@ -284,7 +293,7 @@
           renderPlayers();
       }
 
-      // --- Dictionnaire pour reconnaitre certains mots comme nombres ---
+      // --- Dictionnaire pour reconnaître certains mots comme nombres ---
       const spelledNumbers = {
           'un': 1, 'une': 1,
           'deux': 2, 'de': 2,
