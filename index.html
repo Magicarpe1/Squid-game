@@ -9,12 +9,10 @@
           font-family: "GameOfSquids";
           src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
       }
-
       @font-face {
           font-family: "PlayerFont";
           src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
       }
-
       body {
           font-family: "GameOfSquids", sans-serif;
           background-color: #101010;
@@ -23,7 +21,6 @@
           margin: 0;
           padding: 20px;
       }
-
       h1 {
           font-size: 3rem;
           margin: 20px 0;
@@ -33,35 +30,29 @@
           gap: 10px;
           color: white;
       }
-
       h1 span {
           display: inline-block;
           font-family: "GameOfSquids", sans-serif;
           font-size: 3rem;
       }
-
       h1 span.shape-circle {
           color: #ff3e68;
       }
-
       h1 span.shape-triangle {
           color: #ff3e68;
       }
-
       /* Agrandir le carré pour qu’il paraisse plus proche en taille */
       h1 span.shape-square {
           color: #ff3e68;
           transform: scale(1.4);
           display: inline-block;
       }
-
       #players-container {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
           gap: 10px;
       }
-
       .player-card {
           width: 80px;
           height: 120px;
@@ -76,12 +67,10 @@
           font-family: "PlayerFont", sans-serif;
           position: relative;
       }
-
       .player-card.active {
           border-color: limegreen;
           background-color: #0a0;
       }
-
       .player-card-number {
           font-size: 2rem;
           color: white;
@@ -90,13 +79,11 @@
           border: 2px solid white;
           border-radius: 5px;
       }
-
       .player-lives {
           font-size: 1.2rem;
           color: white;
           margin-top: 5px;
       }
-
       button {
           padding: 10px 20px;
           font-size: 1.2rem;
@@ -106,25 +93,20 @@
           margin: 20px 10px;
           font-family: "GameOfSquids", sans-serif;
       }
-
       #submit-btn {
           background-color: #ff3e68;
           color: white;
       }
-
       #submit-btn:hover {
           background-color: #c32d4e;
       }
-
       #reset-btn {
           background-color: #32cd32;
           color: white;
       }
-
       #reset-btn:hover {
           background-color: #228b22;
       }
-
       #lives-input {
           padding: 10px;
           font-size: 1.2rem;
@@ -134,7 +116,6 @@
           background-color: #202020;
           color: #fff;
       }
-
       /* Animation du coeur */
       .heart-animation {
           position: absolute;
@@ -144,7 +125,6 @@
           pointer-events: none;
           opacity: 1;
       }
-
       /* Animation du "-X" lors de la perte de vie */
       .minus-life {
           position: absolute;
@@ -187,12 +167,11 @@
 
       // === AUDIO avec fade-in / fade-out ===
       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-      audio.volume = 1.0; // Volume max
+      audio.volume = 1.0;
       let fadeInterval = null;
 
       // Démarre la musique avec un fade-in
       function playAudioFadeIn() {
-          // On arrête toute fade en cours
           if (fadeInterval) clearInterval(fadeInterval);
 
           audio.pause();
@@ -203,7 +182,6 @@
               console.warn("Impossible de jouer la musique :", err);
           });
 
-          // Incrémente volume par paliers
           fadeInterval = setInterval(() => {
               if (audio.volume < 1) {
                   audio.volume = Math.min(audio.volume + 0.1, 1);
@@ -211,7 +189,7 @@
                   clearInterval(fadeInterval);
                   fadeInterval = null;
               }
-          }, 200); // toutes les 200ms
+          }, 200);
       }
 
       // Arrête la musique avec un fade-out
@@ -222,7 +200,6 @@
               if (audio.volume > 0.1) {
                   audio.volume -= 0.1;
               } else {
-                  // On coupe
                   audio.pause();
                   audio.currentTime = 0;
                   clearInterval(fadeInterval);
@@ -231,7 +208,7 @@
           }, 200);
       }
 
-      // --- Affiche toutes les cartes joueurs ---
+      // --- Affichage des joueurs ---
       function renderPlayers() {
           const container = document.getElementById('players-container');
           container.innerHTML = '';
@@ -342,6 +319,7 @@
           heartEl.textContent = '♥';
           document.body.appendChild(heartEl);
 
+          // Position de départ
           heartEl.style.left = donorRect.left + donorRect.width / 2 + 'px';
           heartEl.style.top = donorRect.top + donorRect.height / 2 + 'px';
 
@@ -384,7 +362,6 @@
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
           minusEl.style.top = rect.top + 'px';
 
-          // Animation : monter + disparaître
           minusEl.animate([
               { transform: 'translate(-50%, 0)', opacity: 1 },
               { transform: 'translate(-50%, -50px)', opacity: 0 }
@@ -427,8 +404,8 @@
 
               // (B) "gagnant" => fade-in de la musique
               if (result.includes('gagnant')) {
-                  stopAudioFadeOut(); // stoppe fade-out si en cours
-                  playAudioFadeIn();  // relance la musique
+                  stopAudioFadeOut();
+                  playAudioFadeIn();
               }
 
               // (C) "les autres perdront (\d+)" => fade-out, soustrait vies, "-X"
@@ -483,23 +460,35 @@
                   renderPlayers();
               }
 
-              // (F) "tu peux me transférer X vies du joueur A (au|ou) joueur B"
-              // Ajout du (au|ou) pour tolérer la confusion "au" / "ou"
-              const spelledTransferRegex = /tu peux me transférer (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+) vies? du joueur (\d+) (au|ou) joueur (\d+)/i;
-              const spelledTransferMatch = result.match(spelledTransferRegex);
-              if (spelledTransferMatch) {
-                  let amount = spelledTransferMatch[1];
-                  if (spelledNumbers[amount] !== undefined) {
-                      amount = spelledNumbers[amount];
-                  } else {
-                      amount = parseInt(amount, 10);
+              // (F) NOUVELLE LOGIQUE DE TRANSFERT (plus flexible)
+              // Si la phrase contient "tu peux me transférer", on:
+              // 1) Cherche le PREMIER mot ou chiffre => c'est l'amount
+              // 2) On cherche ensuite DEUX nombres => le 1er = donor, le 2eme = receiver
+              if (result.includes('tu peux me transférer')) {
+                  // 1) Cherche un mot/chiffre pour l'amount
+                  const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
+                  if (!amountMatch) {
+                      console.warn("Pas trouvé de quantité pour le transfert.");
+                      return;
+                  }
+                  let amountRaw = amountMatch[1].toLowerCase();
+                  let amountVal = spelledNumbers[amountRaw] !== undefined
+                      ? spelledNumbers[amountRaw]
+                      : parseInt(amountRaw, 10);
+
+                  // 2) Cherche AU MOINS deux nombres distincts (donor, receiver)
+                  const digits = result.match(/\d+/g);
+                  if (!digits || digits.length < 2) {
+                      console.warn("Pas assez de nombres pour détecter donneur et receveur.");
+                      return;
                   }
 
-                  const donorId = parseInt(spelledTransferMatch[2], 10);
-                  // spelledTransferMatch[3] => "au" ou "ou", on n'en a pas besoin
-                  const receiverId = parseInt(spelledTransferMatch[4], 10);
+                  // 1er nombre = donor, 2e = receiver
+                  const donorId = parseInt(digits[0], 10);
+                  const receiverId = parseInt(digits[1], 10);
 
-                  transferLives(donorId, receiverId, amount);
+                  transferLives(donorId, receiverId, amountVal);
+                  return; // évite de marquer par mégarde les joueurs comme gagnants
               }
 
               // (G) Sélectionner des gagnants par numéro
