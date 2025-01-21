@@ -98,14 +98,14 @@
 
       /* Taille de police plus grande pour les vies */
       .player-lives {
-          font-size: 1.6rem; /* augmenté par rapport à 1.2rem */
+          font-size: 1.6rem; /* au lieu de 1.2rem */
           color: white;
           margin-top: 5px;
       }
 
-      /* --- Boutons bien plus bas --- */
+      /* --- Boutons encore plus bas --- */
       .buttons-container {
-          margin-top: 200px;  /* Ajuste cette valeur si tu veux les descendre encore plus */
+          margin-top: 300px; /* Ajuste cette valeur si tu veux descendre encore plus */
       }
 
       button {
@@ -241,15 +241,11 @@
           const container = document.getElementById('players-container');
           container.innerHTML = '';
           players.forEach(player => {
-              const playerCard = document.createElement('div');
-
-              // Classe de base
               let cardClass = 'player-card';
-              // Gagnant => "active"
               if (player.isWinner) cardClass += ' active';
-              // 0 vie => "no-lives"
               if (player.lives <= 0) cardClass += ' no-lives';
 
+              const playerCard = document.createElement('div');
               playerCard.className = cardClass;
               playerCard.onclick = () => toggleWinner(player.id);
 
