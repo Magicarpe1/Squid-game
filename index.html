@@ -81,6 +81,12 @@
           background-color: #0a0;
       }
 
+      /* Nouvelle classe pour 0 vies */
+      .player-card.no-lives {
+          background-color: #505050 !important;
+          opacity: 0.7;
+      }
+
       .player-card-number {
           font-size: 2rem;
           color: white;
@@ -90,8 +96,9 @@
           border-radius: 5px;
       }
 
+      /* Taille de police plus grande pour les vies */
       .player-lives {
-          font-size: 1.2rem;
+          font-size: 1.6rem; /* augmenté par rapport à 1.2rem */
           color: white;
           margin-top: 5px;
       }
@@ -167,22 +174,19 @@
       <span class="shape-square">■</span>
       <span>GAME</span>
   </h1>
-  <!-- Remplace le texte par "À qui le tour ?" -->
   <p>À qui le tour ?</p>
 
   <div id="players-container"></div>
 
-  <!-- Conteneur pour les boutons, descendu via .buttons-container -->
   <div class="buttons-container">
       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
-      <!-- Au lieu de resetLives() direct, on met confirmReset() -->
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="voice-btn" onclick="startVoiceRecognition()">Activer la Reconnaissance Vocale</button>
   </div>
 
   <script>
-      // --- Tableau des joueurs (65 au lieu de 60) ---
+      // --- Tableau des joueurs ---
       const players = Array.from({ length: 65 }, (_, i) => ({
           id: i + 1,
           lives: 6,
@@ -238,7 +242,15 @@
           container.innerHTML = '';
           players.forEach(player => {
               const playerCard = document.createElement('div');
-              playerCard.className = 'player-card' + (player.isWinner ? ' active' : '');
+
+              // Classe de base
+              let cardClass = 'player-card';
+              // Gagnant => "active"
+              if (player.isWinner) cardClass += ' active';
+              // 0 vie => "no-lives"
+              if (player.lives <= 0) cardClass += ' no-lives';
+
+              playerCard.className = cardClass;
               playerCard.onclick = () => toggleWinner(player.id);
 
               const playerNumber = document.createElement('div');
@@ -270,6 +282,7 @@
           players.forEach(player => {
               if (!player.isWinner && player.lives > 0) {
                   player.lives -= livesToRemove;
+                  if (player.lives < 0) player.lives = 0;
               }
               player.isWinner = false;
           });
@@ -446,6 +459,7 @@
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
                           player.lives -= livesToRemove;
+                          if (player.lives < 0) player.lives = 0;
                           showMinusLife(player.id, livesToRemove);
                       }
                       player.isWinner = false;
@@ -468,6 +482,7 @@
                       players.forEach(player => {
                           if (!player.isWinner && player.lives > 0) {
                               player.lives -= val;
+                              if (player.lives < 0) player.lives = 0;
                               showMinusLife(player.id, val);
                           }
                           player.isWinner = false;
@@ -483,6 +498,7 @@
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
                           player.lives -= val;
+                          if (player.lives < 0) player.lives = 0;
                           showMinusLife(player.id, val);
                       }
                       player.isWinner = false;
@@ -493,10 +509,11 @@
               // (E BIS) "les autres paires de devis" => retire 2 vies
               if (result.includes('les autres paires de devis')) {
                   stopAudioFadeOut();
-                  const val = 2; // on retire 2, comme demandé
+                  const val = 2; 
                   players.forEach(player => {
                       if (!player.isWinner && player.lives > 0) {
                           player.lives -= val;
+                          if (player.lives < 0) player.lives = 0;
                           showMinusLife(player.id, val);
                       }
                       player.isWinner = false;
