@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Squid Game - Gestion des Joueurs</title>
   <style>
       @font-face {
@@ -32,22 +32,17 @@
           gap: 10px;
           color: white;
       }
-
       h1 span {
           display: inline-block;
           font-family: "GameOfSquids", sans-serif;
           font-size: 3rem;
       }
-
       h1 span.shape-circle {
           color: #ff3e68;
       }
-
       h1 span.shape-triangle {
           color: #ff3e68;
       }
-
-      /* Agrandir le carré pour qu’il paraisse plus proche en taille */
       h1 span.shape-square {
           color: #ff3e68;
           transform: scale(1.4);
@@ -75,13 +70,11 @@
           font-family: "PlayerFont", sans-serif;
           position: relative;
       }
-
       .player-card.active {
           border-color: limegreen;
           background-color: #0a0;
       }
-
-      /* Classe pour 0 vies */
+      /* Cartes à 0 vies */
       .player-card.no-lives {
           background-color: #505050 !important;
           opacity: 0.7;
@@ -95,19 +88,16 @@
           border: 2px solid white;
           border-radius: 5px;
       }
-
-      /* Police plus grande pour les vies */
       .player-lives {
-          font-size: 1.6rem;
+          font-size: 1.6rem; 
           color: white;
           margin-top: 5px;
       }
 
-      /* Boutons plus bas */
+      /* Boutons très bas */
       .buttons-container {
-          margin-top: 400px; /* Ajuste cette valeur si tu veux descendre encore plus */
+          margin-top: 400px; /* Ajuste si tu veux descendre plus */
       }
-
       button {
           padding: 10px 20px;
           font-size: 1.2rem;
@@ -117,7 +107,6 @@
           margin: 20px 10px;
           font-family: "GameOfSquids", sans-serif;
       }
-
       #submit-btn {
           background-color: #ff3e68;
           color: white;
@@ -125,7 +114,6 @@
       #submit-btn:hover {
           background-color: #c32d4e;
       }
-
       #reset-btn {
           background-color: #32cd32;
           color: white;
@@ -133,15 +121,6 @@
       #reset-btn:hover {
           background-color: #228b22;
       }
-
-      #undo-btn {
-          background-color: #888;
-          color: white;
-      }
-      #undo-btn:hover {
-          background-color: #555;
-      }
-
       #voice-btn {
           background-color: #3f51b5;
           color: white;
@@ -149,7 +128,6 @@
       #voice-btn:hover {
           background-color: #303f9f;
       }
-
       #lives-input {
           padding: 10px;
           font-size: 1.2rem;
@@ -169,8 +147,7 @@
           pointer-events: none;
           opacity: 1;
       }
-
-      /* Animation du "-X" lors de la perte de vie */
+      /* Animation du "-X" */
       .minus-life {
           position: absolute;
           color: red;
@@ -179,6 +156,46 @@
           opacity: 1;
           transform: translate(-50%, 0);
           pointer-events: none;
+      }
+
+      /* Overlay pour l'affichage des gagnants */
+      #winners-overlay {
+          display: none; /* Par défaut, masqué */
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: rgba(0, 0, 0, 0.9);
+          z-index: 99999;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 20px;
+          padding: 20px;
+      }
+      .winner-clone {
+          width: 140px; 
+          height: 200px;
+          background-color: #007575;
+          border: 3px solid #fff;
+          border-radius: 5px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          transform: scale(1.2);
+          transition: transform 0.3s ease;
+      }
+      .winner-clone .clone-number {
+          font-size: 3rem;
+          background-color: #005050;
+          color: #fff;
+          border: 2px solid #fff;
+          border-radius: 5px;
+          padding: 5px 10px;
+      }
+      .winner-clone .clone-lives {
+          font-size: 1.5rem;
+          color: #fff;
+          margin-top: 5px;
       }
   </style>
 </head>
@@ -192,32 +209,27 @@
   </h1>
   <p>À qui le tour ?</p>
 
+  <!-- Overlay caché pour l'affichage en grand des gagnants -->
+  <div id="winners-overlay"></div>
+
   <div id="players-container"></div>
 
-  <!-- Ajout d'un bouton "Retour" -->
   <div class="buttons-container">
       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
-      <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
   </div>
 
   <script>
-      // === 1) Tableau des joueurs (65) + snapshot pour UNDO ===
-      let players = Array.from({ length: 64 }, (_, i) => ({
+      // === 1) Gestion des joueurs ===
+      let players = Array.from({ length: 65 }, (_, i) => ({
           id: i + 1,
           lives: 6,
           isWinner: false,
       }));
-      let lastPlayers = null; // stocke l'état précédent pour UNDO
 
-      function saveState() {
-          // Clone en profondeur
-          lastPlayers = JSON.parse(JSON.stringify(players));
-      }
-
-      // === 2) Audio (fade-in / fade-out) ===
+      // === 2) Audio Fade in/out ===
       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
       audio.volume = 1.0;
       let fadeInterval = null;
@@ -239,7 +251,6 @@
               }
           }, 200);
       }
-
       function stopAudioFadeOut() {
           if (fadeInterval) clearInterval(fadeInterval);
           fadeInterval = setInterval(() => {
@@ -254,7 +265,7 @@
           }, 200);
       }
 
-      // === 3) Rendu des joueurs ===
+      // === 3) Affichage des joueurs ===
       function renderPlayers() {
           const container = document.getElementById('players-container');
           container.innerHTML = '';
@@ -281,19 +292,20 @@
           });
       }
 
-      // === 4) Gérer le statut gagnant manuellement ===
+      // === 4) Marquer / démarrer un joueur comme gagnant ===
       function toggleWinner(playerId) {
-          saveState(); // on enregistre l'état avant de changer
           const player = players.find(p => p.id === playerId);
           if (player) {
               player.isWinner = !player.isWinner;
               renderPlayers();
+              showWinners(); // pour afficher en overlay si on a des winners
           }
       }
 
-      // === 5) Soumettre les gagnants (bouton) ===
+      // === 5) Soumettre (les perdants perdent X vies) ===
       function processRound() {
-          saveState(); // snapshot avant de modifier
+          // On enlève l'overlay
+          hideWinners();
           const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
           players.forEach(player => {
               if (!player.isWinner && player.lives > 0) {
@@ -305,144 +317,74 @@
           renderPlayers();
       }
 
-      // === 6) Confirmation avant reset ===
+      // === 6) Confirmation avant reset
       function confirmReset() {
-          const sure = confirm("Êtes-vous sûr de vouloir réinitialiser toutes les vies ?");
-          if (sure) {
-              resetLives();
+          if (confirm("Êtes-vous sûr de vouloir réinitialiser toutes les vies ?")) {
+              hideWinners();
+              players.forEach(p => {
+                  p.lives = 6;
+                  p.isWinner = false;
+              });
+              renderPlayers();
           }
       }
-      function resetLives() {
-          saveState();
-          players.forEach(player => {
-              player.lives = 6;
-              player.isWinner = false;
-          });
-          renderPlayers();
-      }
 
-      // === 7) Undo (Retour) ===
-      function undoAction() {
-          if (!lastPlayers) {
-              console.warn("Aucune action à annuler.");
+      // === 7) Overlay "Winners" en grand
+      function showWinners() {
+          const overlay = document.getElementById('winners-overlay');
+          overlay.innerHTML = '';
+          const winners = players.filter(p => p.isWinner);
+
+          if (winners.length === 0) {
+              overlay.style.display = 'none';
               return;
           }
-          // On replace players par lastPlayers
-          players = JSON.parse(JSON.stringify(lastPlayers));
-          renderPlayers();
-      }
 
-      // === 8) Dictionnaire pour reconnaissance vocale => chiffres / mots
-      const spelledNumbers = {
-          'un': 1, 'une': 1,
-          'deux': 2, 'de': 2,
-          'trois': 3,
-          'quatre': 4,
-          'cinq': 5,
-          'six': 6,
-          'sept': 7,
-          'huit': 8,
-          'neuf': 9,
-          'dix': 10,
-          'devis': 2,
-          'paires': 2
-      };
-
-      // === 9) Transfert de vies + animation
-      function transferLives(donorId, receiverId, amount) {
-          saveState();
-          const donor = players.find(p => p.id === donorId);
-          const receiver = players.find(p => p.id === receiverId);
-          if (!donor || !receiver) {
-              console.warn("Donneur ou receveur introuvable.");
-              return;
-          }
-          if (donor.lives < amount) {
-              console.warn(`Le joueur ${donorId} n'a pas assez de vies à donner.`);
-              return;
-          }
-          donor.lives -= amount;
-          receiver.lives += amount;
-          renderPlayers();
-          animateHeart(donorId, receiverId);
-      }
-
-      function animateHeart(donorId, receiverId) {
+          // On masque les cartes winners dans le container pour éviter le doublon
           const container = document.getElementById('players-container').children;
-          let donorCard = null;
-          let receiverCard = null;
-
           for (let card of container) {
-              const numberDiv = card.querySelector('.player-card-number');
-              const cardId = parseInt(numberDiv.textContent);
-              if (cardId === donorId) donorCard = card;
-              if (cardId === receiverId) receiverCard = card;
-          }
-
-          if (!donorCard || !receiverCard) return;
-
-          const donorRect = donorCard.getBoundingClientRect();
-          const receiverRect = receiverCard.getBoundingClientRect();
-
-          const heartEl = document.createElement('div');
-          heartEl.className = 'heart-animation';
-          heartEl.textContent = '♥';
-          document.body.appendChild(heartEl);
-
-          heartEl.style.left = donorRect.left + donorRect.width / 2 + 'px';
-          heartEl.style.top = donorRect.top + donorRect.height / 2 + 'px';
-
-          const deltaX = (receiverRect.left + receiverRect.width / 2) - (donorRect.left + donorRect.width / 2);
-          const deltaY = (receiverRect.top + receiverRect.height / 2) - (donorRect.top + donorRect.height / 2);
-
-          heartEl.animate([
-              { transform: 'translate(0, 0)', opacity: 1 },
-              { transform: `translate(${deltaX}px, ${deltaY}px)`, opacity: 1 }
-          ], {
-              duration: 1000,
-              easing: 'ease-in-out'
-          }).onfinish = () => {
-              document.body.removeChild(heartEl);
-          };
-      }
-
-      // === 10) Animation "-X" quand un joueur perd des vies
-      function showMinusLife(playerId, lostValue) {
-          const container = document.getElementById('players-container').children;
-          let card = null;
-          for (let c of container) {
-              const numberDiv = c.querySelector('.player-card-number');
-              const cardId = parseInt(numberDiv.textContent);
-              if (cardId === playerId) {
-                  card = c;
-                  break;
+              const num = card.querySelector('.player-card-number').textContent;
+              const id = parseInt(num, 10);
+              const pl = players.find(x => x.id === id);
+              if (pl && pl.isWinner) {
+                  card.style.display = 'none'; // masque la carte dans la grille
               }
           }
-          if (!card) return;
 
-          const rect = card.getBoundingClientRect();
-          const minusEl = document.createElement('div');
-          minusEl.className = 'minus-life';
-          minusEl.textContent = `-${lostValue}`;
+          // On clone en version "winner-clone"
+          winners.forEach(w => {
+              const clone = document.createElement('div');
+              clone.className = 'winner-clone';
+              
+              const cloneNumber = document.createElement('div');
+              cloneNumber.className = 'clone-number';
+              cloneNumber.textContent = w.id.toString().padStart(3, '0');
 
-          document.body.appendChild(minusEl);
-          minusEl.style.left = (rect.left + rect.width / 2) + 'px';
-          minusEl.style.top = rect.top + 'px';
+              const cloneLives = document.createElement('div');
+              cloneLives.className = 'clone-lives';
+              cloneLives.textContent = `Vies: ${w.lives}`;
 
-          minusEl.animate([
-              { transform: 'translate(-50%, 0)', opacity: 1 },
-              { transform: 'translate(-50%, -50px)', opacity: 0 }
-          ], {
-              duration: 1000,
-              easing: 'ease-out'
-          }).onfinish = () => {
-              document.body.removeChild(minusEl);
-          };
+              clone.appendChild(cloneNumber);
+              clone.appendChild(cloneLives);
+              overlay.appendChild(clone);
+          });
+
+          overlay.style.display = 'flex';
+      }
+      function hideWinners() {
+          const overlay = document.getElementById('winners-overlay');
+          overlay.innerHTML = '';
+          overlay.style.display = 'none';
+          // On rétablit l'affichage normal des cartes
+          const container = document.getElementById('players-container').children;
+          for (let card of container) {
+              card.style.display = '';
+          }
       }
 
-      // === 11) Reconnaissance vocale, activable/désactivable
+      // === 8) Reconnaissance vocale activable/désactivable
       let recognition = null;
-      let isVoiceActive = false; // indique si on est en train d'écouter
+      let isVoiceActive = false;
 
       function toggleVoiceRecognition() {
           if (!('webkitSpeechRecognition' in window)) {
@@ -450,6 +392,7 @@
               return;
           }
 
+          const voiceBtn = document.getElementById('voice-btn');
           if (!recognition) {
               recognition = new webkitSpeechRecognition();
               recognition.lang = 'fr-FR';
@@ -459,17 +402,12 @@
 
               recognition.onresult = handleVoiceResult;
               recognition.onerror = (event) => {
-                  console.error('Erreur de reconnaissance vocale:', event.error);
+                  console.error('Erreur reco vocale:', event.error);
               };
               recognition.onend = () => {
-                  // Si c'était actif et que ça s'arrête, on relance si le user n'a pas cliqué pour désactiver
-                  if (isVoiceActive) {
-                      recognition.start();
-                  }
+                  if (isVoiceActive) recognition.start();
               };
           }
-
-          const voiceBtn = document.getElementById('voice-btn');
 
           if (!isVoiceActive) {
               // Activer
@@ -484,40 +422,46 @@
           }
       }
 
-      // === 12) Traitement du résultat vocal
+      // === 9) Gestion du résultat vocal
+      const spelledNumbers = {
+          'un': 1, 'une': 1,
+          'deux': 2, 'de': 2,
+          'trois': 3, 'quatre': 4,
+          'cinq': 5, 'six': 6,
+          'sept': 7, 'huit': 8,
+          'neuf': 9, 'dix': 10,
+          'devis': 2, 'paires': 2
+      };
+
       function handleVoiceResult(event) {
           const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
           console.log('Reconnaissance vocale:', result);
 
-          // *** Gérer la commande "retour" (annule la dernière action) en premier
-          if (result.includes('retour')) {
-              undoAction();
-              return;
-          }
-
-          // (A) Retirer tous les gagnants
+          // On gère l'overlay => si la commande supprime / modifie les gagnants, on fait hideWinners()
+          
+          // 1) Retire moi tous les numéros
           if (
               result.includes('retire moi tous les numéros') ||
               result.includes('retire-moi tous les numéros') ||
               result.includes('retiens-moi tous les numéros') ||
               result.includes('rupture moi tous les numéros')
           ) {
-              saveState();
+              hideWinners();
               players.forEach(player => player.isWinner = false);
               renderPlayers();
               return;
           }
 
-          // (B) "gagnant" => fade-in
+          // 2) "gagnant"
           if (result.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
           }
 
-          // (C) "les autres perdront (\d+)"
+          // 3) "les autres perdront X vies"
           const perdrontMatch = result.match(/les autres perdront (\d+)/i);
           if (perdrontMatch) {
-              saveState();
+              hideWinners();
               stopAudioFadeOut();
               const livesToRemove = parseInt(perdrontMatch[1], 10);
               players.forEach(player => {
@@ -532,9 +476,9 @@
               return;
           }
 
-          // (D) "les autres perdent X vies"
+          // 4) "les autres perdent X vies"
           if (result.includes('les autres perdent')) {
-              saveState();
+              hideWinners();
               stopAudioFadeOut();
               const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
               const spelledMatch = result.match(spelledRegex);
@@ -558,9 +502,9 @@
               return;
           }
 
-          // (E) "les autres paires de vie"
+          // 5) "les autres paires de vie" => retire 2
           if (result.includes('les autres paires de vie')) {
-              saveState();
+              hideWinners();
               stopAudioFadeOut();
               const val = 2;
               players.forEach(player => {
@@ -575,9 +519,9 @@
               return;
           }
 
-          // (E BIS) "les autres paires de devis"
+          // 6) "les autres paires de devis" => retire 2
           if (result.includes('les autres paires de devis')) {
-              saveState();
+              hideWinners();
               stopAudioFadeOut();
               const val = 2;
               players.forEach(player => {
@@ -592,10 +536,9 @@
               return;
           }
 
-          // (F) "tu peux me transférer"
+          // 7) "tu peux me transférer X vies du joueur A au joueur B"
           if (result.includes('tu peux me transférer')) {
-              // On enregistre l'état
-              saveState();
+              hideWinners();
               const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
               if (!amountMatch) return;
 
@@ -616,10 +559,9 @@
               return;
           }
 
-          // (G) Sélectionner des gagnants par numéro
+          // 8) Sélection de gagnants par numéro (ex: "gagnant 5 10")
           const matches = result.match(/\d+/g);
           if (matches) {
-              saveState(); 
               matches.forEach(num => {
                   const playerId = parseInt(num, 10);
                   const player = players.find(p => p.id === playerId);
@@ -628,10 +570,14 @@
                   }
               });
               renderPlayers();
+              showWinners();
           }
       }
 
-      // Lance l'affichage initial
+      // === 11) show/hideWinners() => géré dans toggleWinner + si on retire/force Round
+      // (déjà implémenté plus haut)
+
+      // Au démarrage
       renderPlayers();
   </script>
 </body>
