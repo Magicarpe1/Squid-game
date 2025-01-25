@@ -217,12 +217,7 @@
       <span>GAME</span>
   </h1>
 
-  <audio id="audio-input" controls>
-  <source src="https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3" type="audio/mpeg">
-  Votre navigateur ne supporte pas l'élément audio.
-  </audio>
-  <br>
-  <button id="voice-btn">Activer la voix modifiée</button>
+  <button id="start-voice-btn">Activer l'effet vocal</button>
 
   <p>À qui le tour ?</p>
 
@@ -659,34 +654,50 @@
           }
       }
 
-      // Lancement initial
-      renderPlayers();
+      // Vérifie si le navigateur supporte le Web Audio API
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  alert("Votre navigateur ne supporte pas l'accès au microphone.");
+}
+
 // Initialisation du contexte audio
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const audioElement = document.getElementById('audio-input');
-const audioSource = audioContext.createMediaElementSource(audioElement);
+let microphoneStream = null; // Flux du micro
+let pitchFilter, gainNode; // Filtres pour les effets
 
-// Créer un filtre pour un effet grave
-const pitchFilter = audioContext.createBiquadFilter();
-pitchFilter.type = 'lowshelf'; // Type de filtre
-pitchFilter.frequency.value = 300; // Ajuste la fréquence des graves
-pitchFilter.gain.value = 15; // Amplification des graves
+// Fonction pour démarrer la capture du microphone et appliquer les effets
+async function startVoiceEffects() {
+  try {
+    // Capture du microphone
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    microphoneStream = audioContext.createMediaStreamSource(stream);
 
-// Contrôle du volume global
-const gainNode = audioContext.createGain();
-gainNode.gain.value = 1; // Volume initial
+    // Créer un filtre pour un effet grave
+    pitchFilter = audioContext.createBiquadFilter();
+    pitchFilter.type = 'lowshelf'; // Filtre grave
+    pitchFilter.frequency.value = 300; // Fréquence
+    pitchFilter.gain.value = 15; // Amplification des graves
 
-// Connecter les nodes audio
-audioSource.connect(pitchFilter);
-pitchFilter.connect(gainNode);
-gainNode.connect(audioContext.destination);
+    // Contrôle du volume
+    gainNode = audioContext.createGain();
+    gainNode.gain.value = 1; // Volume initial
 
-// Activer l’effet avec un bouton
-document.getElementById('voice-btn').addEventListener('click', () => {
+    // Connecter les nodes : Micro → Pitch → Gain → Haut-parleurs
+    microphoneStream.connect(pitchFilter);
+    pitchFilter.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    alert("Effet vocal activé !");
+  } catch (error) {
+    console.error("Erreur lors de l'accès au micro :", error);
+  }
+}
+
+// Ajouter un événement au bouton
+document.getElementById('start-voice-btn').addEventListener('click', () => {
   if (audioContext.state === 'suspended') {
     audioContext.resume(); // Réactiver l’audio si suspendu
   }
-  audioElement.play(); // Joue l’audio avec l’effet
+  startVoiceEffects();
 });
 
   </script>
