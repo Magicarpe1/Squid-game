@@ -663,14 +663,7 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 // Initialisation du contexte audio
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 let microphoneStream = null; // Flux du micro
-let pitchFilter, gainNode, delayNode, reverbNode; // Filtres pour les effets
-
-// Charger une réverbération personnalisée
-async function loadImpulseResponse(url) {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return audioContext.decodeAudioData(arrayBuffer);
-}
+let pitchFilter, gainNode, delayNode; // Filtres pour les effets
 
 // Fonction pour démarrer la capture du microphone et appliquer les effets
 async function startVoiceEffects() {
@@ -693,18 +686,10 @@ async function startVoiceEffects() {
     delayNode = audioContext.createDelay();
     delayNode.delayTime.value = 0.05; // Délai pour simuler un écho mécanique
 
-    // 4. Réverbération (ambiance sombre et métallique)
-    reverbNode = audioContext.createConvolver();
-    const impulseResponse = await loadImpulseResponse(
-      "https://freesound.org/data/previews/613/613259_5674468-lq.wav" // Exemple d'impulsion
-    );
-    reverbNode.buffer = impulseResponse;
-
-    // Chaîne de connexion : Micro → Graves → Echo → Réverbération → Volume → Haut-parleurs
+    // Chaîne de connexion : Micro → Graves → Echo → Volume → Haut-parleurs
     microphoneStream.connect(pitchFilter);
     pitchFilter.connect(delayNode);
-    delayNode.connect(reverbNode);
-    reverbNode.connect(gainNode);
+    delayNode.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
     alert("Effet vocal activé !");
@@ -720,6 +705,7 @@ document.getElementById('start-voice-btn').addEventListener('click', () => {
   }
   startVoiceEffects();
 });
+
 
   </script>
 </body>
