@@ -653,51 +653,93 @@
           }
       }
 
-      // Vérifie si le navigateur supporte le Web Audio API
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-  alert("Votre navigateur ne supporte pas l'accès au microphone.");
+      // Initialisation du contexte audio
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let microphoneStream = null;
+
+// Variables pour les effets
+let pitchFilter, gainNode, delayNode, reverbNode, equalizerNodes;
+
+// Charger une réverbération pour l'effet "masqué"
+async function loadImpulseResponse(url) {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return audioContext.decodeAudioData(arrayBuffer);
 }
 
-// Initialisation du contexte audio
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let microphoneStream = null; // Flux du micro
-let pitchFilter, gainNode; // Filtres pour les effets
+// Configuration des effets audio
+async function setupVoiceEffects() {
+  // Filtre pour les graves
+  pitchFilter = audioContext.createBiquadFilter();
+  pitchFilter.type = 'lowshelf';
+  pitchFilter.frequency.value = 300; // Ajuste la fréquence grave
+  pitchFilter.gain.value = 15; // Amplification des graves
+
+  // Gain (volume)
+  gainNode = audioContext.createGain();
+  gainNode.gain.value = 1;
+
+  // Delay (effet mécanique)
+  delayNode = audioContext.createDelay();
+  delayNode.delayTime.value = 0.03; // Décalage en secondes
+
+  // Égaliseur (ajustement des fréquences)
+  equalizerNodes = [
+    createEqualizerFilter(100, 10), // Renforce les basses fréquences
+    createEqualizerFilter(1000, -5), // Réduit les médiums
+    createEqualizerFilter(5000, -10), // Diminue les aigus
+  ];
+
+  // Réverbération (ambiance sombre)
+  reverbNode = audioContext.createConvolver();
+  const impulseResponse = await loadImpulseResponse('https://freesound.org/data/previews/613/613259_5674468-lq.wav'); // URL d'impulsion
+  reverbNode.buffer = impulseResponse;
+
+  // Connecte les nodes en chaîne
+  microphoneStream.connect(pitchFilter);
+  equalizerNodes.reduce((prev, current) => {
+    prev.connect(current);
+    return current;
+  }, pitchFilter).connect(delayNode);
+  delayNode.connect(reverbNode);
+  reverbNode.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+}
+
+// Créer un filtre égaliseur
+function createEqualizerFilter(frequency, gain) {
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'peaking';
+  filter.frequency.value = frequency;
+  filter.gain.value = gain;
+  filter.Q.value = 1; // Qualité du filtre
+  return filter;
+}
 
 // Fonction pour démarrer la capture du microphone et appliquer les effets
 async function startVoiceEffects() {
   try {
-    // Capture du microphone
+    // Capture le microphone
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     microphoneStream = audioContext.createMediaStreamSource(stream);
 
-    // Créer un filtre pour un effet grave
-    pitchFilter = audioContext.createBiquadFilter();
-    pitchFilter.type = 'lowshelf'; // Filtre grave
-    pitchFilter.frequency.value = 2000; // Fréquence
-    pitchFilter.gain.value = 80; // Amplification des graves
+    // Configure les effets audio
+    await setupVoiceEffects();
 
-    // Contrôle du volume
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = 1; // Volume initial
-
-    // Connecter les nodes : Micro → Pitch → Gain → Haut-parleurs
-    microphoneStream.connect(pitchFilter);
-    pitchFilter.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    alert("Effet vocal activé !");
+    alert('Effet vocal activé ! Parlez dans le micro.');
   } catch (error) {
-    console.error("Erreur lors de l'accès au micro :", error);
+    console.error('Erreur lors de l’accès au microphone :', error);
   }
 }
 
 // Ajouter un événement au bouton
 document.getElementById('start-voice-btn').addEventListener('click', () => {
   if (audioContext.state === 'suspended') {
-    audioContext.resume(); // Réactiver l’audio si suspendu
+    audioContext.resume(); // Réactive l’audio si suspendu
   }
   startVoiceEffects();
 });
+
 
   </script>
 </body>
