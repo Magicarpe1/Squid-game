@@ -229,7 +229,6 @@
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
-      <button id="start-voice-btn">Activer l'effet vocal</button>
   </div>
 
   <script>
@@ -654,59 +653,6 @@
 
       // Lancement initial
       renderPlayers();
-
-// Vérifie si le navigateur supporte le Web Audio API
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-  alert("Votre navigateur ne supporte pas l'accès au microphone.");
-}
-
-// Initialisation du contexte audio
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let microphoneStream = null; // Flux du micro
-let pitchFilter, gainNode, delayNode; // Filtres pour les effets
-
-// Fonction pour démarrer la capture du microphone et appliquer les effets
-async function startVoiceEffects() {
-  try {
-    // Capture du microphone
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    microphoneStream = audioContext.createMediaStreamSource(stream);
-
-    // 1. Filtre pour amplifier les graves
-    pitchFilter = audioContext.createBiquadFilter();
-    pitchFilter.type = 'lowshelf';
-    pitchFilter.frequency.value = 700; // Booster les graves
-    pitchFilter.gain.value = 10;
-
-    // 2. Contrôle du volume
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = 1.2; // Augmente légèrement le volume
-
-    // 3. Ajout d'un léger écho
-    delayNode = audioContext.createDelay();
-    delayNode.delayTime.value = 0.05; // Délai pour simuler un écho mécanique
-
-    // Chaîne de connexion : Micro → Graves → Echo → Volume → Haut-parleurs
-    microphoneStream.connect(pitchFilter);
-    pitchFilter.connect(delayNode);
-    delayNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    alert("Effet vocal activé !");
-  } catch (error) {
-    console.error("Erreur lors de l'accès au micro :", error);
-  }
-}
-
-// Ajouter un événement au bouton
-document.getElementById('start-voice-btn').addEventListener('click', () => {
-  if (audioContext.state === 'suspended') {
-    audioContext.resume(); // Réactiver l’audio si suspendu
-  }
-  startVoiceEffects();
-});
-
-
   </script>
 </body>
 </html>
