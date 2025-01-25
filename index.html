@@ -216,7 +216,6 @@
       <span class="shape-square">■</span>
       <span>GAME</span>
   </h1>
-
   <p>À qui le tour ?</p>
 
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
@@ -230,7 +229,6 @@
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
-      <button id="start-voice-btn">Activer l'effet vocal</button>  
   </div>
 
   <script>
@@ -653,73 +651,8 @@
           }
       }
 
-     // Vérifie si le navigateur supporte le Web Audio API
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-  alert("Votre navigateur ne supporte pas l'accès au microphone.");
-}
-
-// Initialisation du contexte audio
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let microphoneStream = null; // Flux du micro
-let pitchFilter, gainNode, delayNode, reverbNode; // Filtres pour les effets
-
-// Charger une réverbération personnalisée
-async function loadImpulseResponse(url) {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return audioContext.decodeAudioData(arrayBuffer);
-}
-
-// Fonction pour démarrer la capture du microphone et appliquer les effets
-async function startVoiceEffects() {
-  try {
-    // Capture le microphone
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    microphoneStream = audioContext.createMediaStreamSource(stream);
-
-    // 1. Filtre pour les graves
-    pitchFilter = audioContext.createBiquadFilter();
-    pitchFilter.type = 'lowshelf'; // Filtre grave
-    pitchFilter.frequency.value = 300; // Fréquence pour booster les graves
-    pitchFilter.gain.value = 20; // Amplification des graves (peut ajuster)
-
-    // 2. Contrôle du volume
-    gainNode = audioContext.createGain();
-    gainNode.gain.value = 1.2; // Volume initial (peut ajuster)
-
-    // 3. Ajout d'un léger écho (delay)
-    delayNode = audioContext.createDelay();
-    delayNode.delayTime.value = 0.04; // Délai en secondes pour l'effet écho mécanique
-
-    // 4. Ajout de réverbération
-    reverbNode = audioContext.createConvolver();
-    const impulseResponse = await loadImpulseResponse(
-      "https://freesound.org/data/previews/613/613259_5674468-lq.wav" // Exemple de réverbération
-    );
-    reverbNode.buffer = impulseResponse;
-
-    // Connecter les nodes : Micro → Pitch → Delay → Reverb → Gain → Haut-parleurs
-    microphoneStream.connect(pitchFilter);
-    pitchFilter.connect(delayNode);
-    delayNode.connect(reverbNode);
-    reverbNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    alert("Effet vocal activé !");
-  } catch (error) {
-    console.error("Erreur lors de l'accès au micro :", error);
-  }
-}
-
-// Ajouter un événement au bouton
-document.getElementById('start-voice-btn').addEventListener('click', () => {
-  if (audioContext.state === 'suspended') {
-    audioContext.resume(); // Réactiver l’audio si suspendu
-  }
-  startVoiceEffects();
-});
-
-
+      // Lancement initial
+      renderPlayers();
   </script>
 </body>
 </html>
