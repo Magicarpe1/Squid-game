@@ -216,6 +216,14 @@
       <span class="shape-square">■</span>
       <span>GAME</span>
   </h1>
+
+  <audio id="audio-input" controls>
+  <source src="https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3" type="audio/mpeg">
+  Votre navigateur ne supporte pas l'élément audio.
+  </audio>
+  <br>
+  <button id="voice-btn">Activer la voix modifiée</button>
+
   <p>À qui le tour ?</p>
 
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
@@ -653,6 +661,34 @@
 
       // Lancement initial
       renderPlayers();
+// Initialisation du contexte audio
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const audioElement = document.getElementById('audio-input');
+const audioSource = audioContext.createMediaElementSource(audioElement);
+
+// Créer un filtre pour un effet grave
+const pitchFilter = audioContext.createBiquadFilter();
+pitchFilter.type = 'lowshelf'; // Type de filtre
+pitchFilter.frequency.value = 300; // Ajuste la fréquence des graves
+pitchFilter.gain.value = 15; // Amplification des graves
+
+// Contrôle du volume global
+const gainNode = audioContext.createGain();
+gainNode.gain.value = 1; // Volume initial
+
+// Connecter les nodes audio
+audioSource.connect(pitchFilter);
+pitchFilter.connect(gainNode);
+gainNode.connect(audioContext.destination);
+
+// Activer l’effet avec un bouton
+document.getElementById('voice-btn').addEventListener('click', () => {
+  if (audioContext.state === 'suspended') {
+    audioContext.resume(); // Réactiver l’audio si suspendu
+  }
+  audioElement.play(); // Joue l’audio avec l’effet
+});
+
   </script>
 </body>
 </html>
