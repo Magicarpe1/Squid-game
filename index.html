@@ -656,100 +656,45 @@
       // Vérifie si le navigateur supporte le Web Audio API
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   alert("Votre navigateur ne supporte pas l'accès au microphone.");
-  console.error("Web Audio API ou getUserMedia non pris en charge.");
 }
 
 // Initialisation du contexte audio
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let microphoneStream = null;
-
-// Variables pour les effets
-let pitchFilter, gainNode, delayNode, reverbNode, equalizerNodes;
-
-// Charger une réverbération pour l'effet "masqué"
-async function loadImpulseResponse(url) {
-  console.log("Chargement de la réverbération depuis :", url);
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  console.log("Réverbération chargée.");
-  return audioContext.decodeAudioData(arrayBuffer);
-}
-
-// Configuration des effets audio
-async function setupVoiceEffects() {
-  console.log("Configuration des effets audio...");
-  // Filtre pour les graves
-  pitchFilter = audioContext.createBiquadFilter();
-  pitchFilter.type = 'lowshelf';
-  pitchFilter.frequency.value = 300;
-  pitchFilter.gain.value = 15;
-
-  // Gain (volume)
-  gainNode = audioContext.createGain();
-  gainNode.gain.value = 1;
-
-  // Delay (effet mécanique)
-  delayNode = audioContext.createDelay();
-  delayNode.delayTime.value = 0.03;
-
-  // Égaliseur
-  equalizerNodes = [
-    createEqualizerFilter(100, 10),
-    createEqualizerFilter(1000, -5),
-    createEqualizerFilter(5000, -10),
-  ];
-
-  // Réverbération
-  reverbNode = audioContext.createConvolver();
-  const impulseResponse = await loadImpulseResponse('https://freesound.org/data/previews/613/613259_5674468-lq.wav');
-  reverbNode.buffer = impulseResponse;
-
-  // Connecte les nodes
-  microphoneStream.connect(pitchFilter);
-  equalizerNodes.reduce((prev, current) => {
-    prev.connect(current);
-    return current;
-  }, pitchFilter).connect(delayNode);
-  delayNode.connect(reverbNode);
-  reverbNode.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  console.log("Effets configurés avec succès.");
-}
-
-// Créer un filtre égaliseur
-function createEqualizerFilter(frequency, gain) {
-  const filter = audioContext.createBiquadFilter();
-  filter.type = 'peaking';
-  filter.frequency.value = frequency;
-  filter.gain.value = gain;
-  filter.Q.value = 1;
-  console.log(`Égaliseur ajouté : ${frequency}Hz, gain ${gain}`);
-  return filter;
-}
+let microphoneStream = null; // Flux du micro
+let pitchFilter, gainNode; // Filtres pour les effets
 
 // Fonction pour démarrer la capture du microphone et appliquer les effets
 async function startVoiceEffects() {
-  console.log("Démarrage de la capture vocale...");
   try {
+    // Capture du microphone
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    console.log("Microphone capturé.");
     microphoneStream = audioContext.createMediaStreamSource(stream);
 
-    await setupVoiceEffects();
+    // Créer un filtre pour un effet grave
+    pitchFilter = audioContext.createBiquadFilter();
+    pitchFilter.type = 'lowshelf'; // Filtre grave
+    pitchFilter.frequency.value = 500; // Fréquence
+    pitchFilter.gain.value = 25; // Amplification des graves
 
-    alert('Effet vocal activé ! Parlez dans le micro.');
+    // Contrôle du volume
+    gainNode = audioContext.createGain();
+    gainNode.gain.value = 1; // Volume initial
+
+    // Connecter les nodes : Micro → Pitch → Gain → Haut-parleurs
+    microphoneStream.connect(pitchFilter);
+    pitchFilter.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    alert("Effet vocal activé !");
   } catch (error) {
-    console.error("Erreur lors de l’accès au microphone :", error);
+    console.error("Erreur lors de l'accès au micro :", error);
   }
 }
 
 // Ajouter un événement au bouton
 document.getElementById('start-voice-btn').addEventListener('click', () => {
-  console.log("Bouton cliqué.");
   if (audioContext.state === 'suspended') {
-    audioContext.resume();
-    console.log("AudioContext réactivé.");
+    audioContext.resume(); // Réactiver l’audio si suspendu
   }
   startVoiceEffects();
 });
