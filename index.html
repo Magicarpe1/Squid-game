@@ -217,8 +217,6 @@
       <span>GAME</span>
   </h1>
 
-  <button id="start-voice-btn">Activer l'effet vocal</button>
-
   <p>À qui le tour ?</p>
 
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
@@ -232,6 +230,7 @@
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+      <button id="start-voice-btn">Activer l'effet vocal</button>  
   </div>
 
   <script>
@@ -674,8 +673,8 @@ async function startVoiceEffects() {
     // Créer un filtre pour un effet grave
     pitchFilter = audioContext.createBiquadFilter();
     pitchFilter.type = 'lowshelf'; // Filtre grave
-    pitchFilter.frequency.value = 300; // Fréquence
-    pitchFilter.gain.value = 15; // Amplification des graves
+    pitchFilter.frequency.value = 600; // Fréquence
+    pitchFilter.gain.value = 30; // Amplification des graves
 
     // Contrôle du volume
     gainNode = audioContext.createGain();
