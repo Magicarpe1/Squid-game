@@ -675,8 +675,8 @@ async function startVoiceEffects() {
     // 1. Filtre pour amplifier les graves
     pitchFilter = audioContext.createBiquadFilter();
     pitchFilter.type = 'lowshelf';
-    pitchFilter.frequency.value = 300; // Booster les graves
-    pitchFilter.gain.value = 15;
+    pitchFilter.frequency.value = 400; // Booster les graves
+    pitchFilter.gain.value = 20;
 
     // 2. Contrôle du volume
     gainNode = audioContext.createGain();
@@ -684,7 +684,7 @@ async function startVoiceEffects() {
 
     // 3. Ajout d'un léger écho
     delayNode = audioContext.createDelay();
-    delayNode.delayTime.value = 0.05; // Délai pour simuler un écho mécanique
+    delayNode.delayTime.value = 0.10; // Délai pour simuler un écho mécanique
 
     // Chaîne de connexion : Micro → Graves → Echo → Volume → Haut-parleurs
     microphoneStream.connect(pitchFilter);
