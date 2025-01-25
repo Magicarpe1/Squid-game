@@ -673,8 +673,8 @@ async function startVoiceEffects() {
     // Créer un filtre pour un effet grave
     pitchFilter = audioContext.createBiquadFilter();
     pitchFilter.type = 'lowshelf'; // Filtre grave
-    pitchFilter.frequency.value = 600; // Fréquence
-    pitchFilter.gain.value = 30; // Amplification des graves
+    pitchFilter.frequency.value = 2000; // Fréquence
+    pitchFilter.gain.value = 80; // Amplification des graves
 
     // Contrôle du volume
     gainNode = audioContext.createGain();
