@@ -636,7 +636,7 @@
               transferLives(donorId, receiverId, amountVal);
               return;
               }
-            // === Nouvelle commande : "les autres gagnent X vie(s)" ===
+       // === Nouvelle commande : "vous perdez X vies" ===
 const spelledNumbers = {
     'un': 1, 'une': 1, '1': 1,
     'deux': 2, 'de': 2, 'devis': 2, 'vis': 2, '2': 2,
@@ -650,23 +650,25 @@ const spelledNumbers = {
     'dix': 10, '10': 10
 };
 
-const gagnentMatch = result.match(/Vous perdez (un|une|deux|de|devis|vis|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vie?s?/i);
-if (gagnentMatch) {
+const perdezMatch = result.match(/vous perdez (un|une|deux|de|devis|vis|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vie?s?/i);
+if (perdezMatch) {
     saveState();
     hideWinners();
 
-    let livesToAdd = gagnentMatch[1].toLowerCase();
-    livesToAdd = spelledNumbers[livesToAdd] !== undefined ? spelledNumbers[livesToAdd] : parseInt(livesToAdd, 10);
+    let livesToRemove = perdezMatch[1].toLowerCase();
+    livesToRemove = spelledNumbers[livesToRemove] !== undefined ? spelledNumbers[livesToRemove] : parseInt(livesToRemove, 10);
 
     players.forEach(p => {
-        if (!p.isWinner) {  // Ajoute des vies seulement aux non-gagnants
-            p.lives += livesToAdd;
+        if (p.isWinner) {  // Seuls les perdants sélectionnés perdent des vies
+            p.lives -= livesToRemove;
+            if (p.lives < 0) p.lives = 0; // Évite les vies négatives
         }
+        p.isWinner = false; // On réinitialise après la perte
     });
+
     renderPlayers();
     return;
 }
-
 
           // "gagnant 5 10"
           const matches = result.match(/\d+/g);
