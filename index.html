@@ -637,15 +637,31 @@
               return;
               }
             // === Nouvelle commande : "les autres gagnent X vie(s)" ===
-              const gagnentMatch = result.match(/les autres gagnent (\d+)/i);
-              if (gagnentMatch) {
-              saveState();
-              hideWinners();
-              const livesToAdd = parseInt(gagnentMatch[1], 10);
-              players.forEach(p => {
-              if (!p.isWinner) {  // Ajoute des vies seulement aux non-gagnants
-              p.lives += livesToAdd;
-              }
+const spelledNumbers = {
+    'un': 1, 'une': 1, '1': 1,
+    'deux': 2, 'de': 2, 'devis': 2, 'vis': 2, '2': 2,
+    'trois': 3, '3': 3,
+    'quatre': 4, '4': 4,
+    'cinq': 5, '5': 5,
+    'six': 6, '6': 6,
+    'sept': 7, '7': 7,
+    'huit': 8, '8': 8,
+    'neuf': 9, '9': 9,
+    'dix': 10, '10': 10
+};
+
+const gagnentMatch = result.match(/les autres gagnent (un|une|deux|de|devis|vis|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vie?s?/i);
+if (gagnentMatch) {
+    saveState();
+    hideWinners();
+
+    let livesToAdd = gagnentMatch[1].toLowerCase();
+    livesToAdd = spelledNumbers[livesToAdd] !== undefined ? spelledNumbers[livesToAdd] : parseInt(livesToAdd, 10);
+
+    players.forEach(p => {
+        if (!p.isWinner) {  // Ajoute des vies seulement aux non-gagnants
+            p.lives += livesToAdd;
+        }
     });
     renderPlayers();
     return;
