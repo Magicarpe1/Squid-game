@@ -635,7 +635,22 @@
               const receiverId = parseInt(digits[1], 10);
               transferLives(donorId, receiverId, amountVal);
               return;
-          }
+              }
+            // === Nouvelle commande : "les autres gagnent X vie(s)" ===
+              const gagnentMatch = result.match(/les autres gagnent (\d+)/i);
+              if (gagnentMatch) {
+              saveState();
+              hideWinners();
+              const livesToAdd = parseInt(gagnentMatch[1], 10);
+              players.forEach(p => {
+              if (!p.isWinner) {  // Ajoute des vies seulement aux non-gagnants
+              p.lives += livesToAdd;
+              }
+    });
+    renderPlayers();
+    return;
+}
+
 
           // "gagnant 5 10"
           const matches = result.match(/\d+/g);
