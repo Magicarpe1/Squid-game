@@ -636,7 +636,7 @@
               transferLives(donorId, receiverId, amountVal);
               return;
               }
-       // === Nouvelle commande : "vous perdez X vies" ===
+       // === Nouvelle commande : "vous perdez devis" ===
 const spelledNumbers = {
     'un': 1, 'une': 1, '1': 1,
     'deux': 2, 'de': 2, 'devis': 2, 'vis': 2, '2': 2,
@@ -650,6 +650,28 @@ const spelledNumbers = {
     'dix': 10, '10': 10
 };
 
+// Gérer la phrase exacte "vous perdez devis"
+if (result.includes("vous perdez devis")) {
+    saveState();
+    hideWinners();
+    
+    const livesToRemove = 2; // "devis" = 2
+
+    console.log(`Commande vocale détectée : Vous perdez ${livesToRemove} vies`);
+
+    players.forEach(p => {
+        if (p.isWinner) {  // Seuls les perdants sélectionnés perdent des vies
+            p.lives -= livesToRemove;
+            if (p.lives < 0) p.lives = 0; // Évite les vies négatives
+        }
+        p.isWinner = false; // On réinitialise après la perte
+    });
+
+    renderPlayers();
+    return;
+}
+
+// Gérer "vous perdez X vies" avec un nombre dynamique
 const perdezMatch = result.match(/vous perdez (un|une|deux|de|devis|vis|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vie?s?/i);
 if (perdezMatch) {
     saveState();
@@ -657,6 +679,8 @@ if (perdezMatch) {
 
     let livesToRemove = perdezMatch[1].toLowerCase();
     livesToRemove = spelledNumbers[livesToRemove] !== undefined ? spelledNumbers[livesToRemove] : parseInt(livesToRemove, 10);
+
+    console.log(`Commande vocale détectée : Vous perdez ${livesToRemove} vies`);
 
     players.forEach(p => {
         if (p.isWinner) {  // Seuls les perdants sélectionnés perdent des vies
