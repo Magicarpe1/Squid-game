@@ -233,7 +233,7 @@
 
   <script>
       // === 1) Players + snapshot pour annuler (retour) ===
-      let players = Array.from({ length: 80 }, (_, i) => ({
+      let players = Array.from({ length: 45 }, (_, i) => ({
           id: i + 1,
           lives: 6,
           isWinner: false,
@@ -307,7 +307,7 @@
 
               const playerLives = document.createElement('div');
               playerLives.className = 'player-lives';
-              playerLives.textContent = `Vies: ${player.lives}`;
+              playerLives.textContent = Vies: ${player.lives};
 
               playerCard.appendChild(playerNumber);
               playerCard.appendChild(playerLives);
@@ -402,7 +402,7 @@
 
               const cloneLives = document.createElement('div');
               cloneLives.className = 'clone-lives';
-              cloneLives.textContent = `Vies: ${w.lives}`;
+              cloneLives.textContent = Vies: ${w.lives};
 
               clone.appendChild(cloneNumber);
               clone.appendChild(cloneLives);
@@ -440,7 +440,7 @@
           const rect = card.getBoundingClientRect();
           const minusEl = document.createElement('div');
           minusEl.className = 'minus-life';
-          minusEl.textContent = `-${lostValue}`;
+          minusEl.textContent = -${lostValue};
           document.body.appendChild(minusEl);
 
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
@@ -635,64 +635,7 @@
               const receiverId = parseInt(digits[1], 10);
               transferLives(donorId, receiverId, amountVal);
               return;
-              }
-       // === Nouvelle commande : "vous perdez devis" ===
-const spelledNumbers = {
-    'un': 1, 'une': 1, '1': 1,
-    'deux': 2, 'de': 2, 'devis': 2, 'vis': 2, '2': 2,
-    'trois': 3, '3': 3,
-    'quatre': 4, '4': 4,
-    'cinq': 5, '5': 5,
-    'six': 6, '6': 6,
-    'sept': 7, '7': 7,
-    'huit': 8, '8': 8,
-    'neuf': 9, '9': 9,
-    'dix': 10, '10': 10
-};
-
-// Gérer la phrase exacte "vous perdez devis"
-if (result.includes("vous perdez devis")) {
-    saveState();
-    hideWinners();
-    
-    const livesToRemove = 2; // "devis" = 2
-
-    console.log(`Commande vocale détectée : Vous perdez ${livesToRemove} vies`);
-
-    players.forEach(p => {
-        if (p.isWinner) {  // Seuls les perdants sélectionnés perdent des vies
-            p.lives -= livesToRemove;
-            if (p.lives < 0) p.lives = 0; // Évite les vies négatives
-        }
-        p.isWinner = false; // On réinitialise après la perte
-    });
-
-    renderPlayers();
-    return;
-}
-
-// Gérer "vous perdez X vies" avec un nombre dynamique
-const perdezMatch = result.match(/vous perdez (un|une|deux|de|devis|vis|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+) vie?s?/i);
-if (perdezMatch) {
-    saveState();
-    hideWinners();
-
-    let livesToRemove = perdezMatch[1].toLowerCase();
-    livesToRemove = spelledNumbers[livesToRemove] !== undefined ? spelledNumbers[livesToRemove] : parseInt(livesToRemove, 10);
-
-    console.log(`Commande vocale détectée : Vous perdez ${livesToRemove} vies`);
-
-    players.forEach(p => {
-        if (p.isWinner) {  // Seuls les perdants sélectionnés perdent des vies
-            p.lives -= livesToRemove;
-            if (p.lives < 0) p.lives = 0; // Évite les vies négatives
-        }
-        p.isWinner = false; // On réinitialise après la perte
-    });
-
-    renderPlayers();
-    return;
-}
+          }
 
           // "gagnant 5 10"
           const matches = result.match(/\d+/g);
