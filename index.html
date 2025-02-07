@@ -307,7 +307,7 @@
 
               const playerLives = document.createElement('div');
               playerLives.className = 'player-lives';
-              playerLives.textContent = Vies: ${player.lives};
+              playerLives.textContent = `Vies: ${player.lives}`;
 
               playerCard.appendChild(playerNumber);
               playerCard.appendChild(playerLives);
@@ -402,7 +402,7 @@
 
               const cloneLives = document.createElement('div');
               cloneLives.className = 'clone-lives';
-              cloneLives.textContent = Vies: ${w.lives};
+              cloneLives.textContent = `Vies: ${w.lives}`;
 
               clone.appendChild(cloneNumber);
               clone.appendChild(cloneLives);
@@ -440,7 +440,7 @@
           const rect = card.getBoundingClientRect();
           const minusEl = document.createElement('div');
           minusEl.className = 'minus-life';
-          minusEl.textContent = -${lostValue};
+          minusEl.textContent = `-${lostValue}`;
           document.body.appendChild(minusEl);
 
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
