@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Setup Squid Game</title>
+  <style>
+    body {
+      background-color: #101010;
+      color: white;
+      text-align: center;
+      font-family: sans-serif;
+      padding: 50px;
+    }
+    input {
+      font-size: 1.2rem;
+      padding: 10px;
+      width: 120px;
+      text-align: center;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      margin-left: 20px;
+      cursor: pointer;
+      background-color: #ff3e68;
+      border: none;
+      color: #fff;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #c32d4e;
+    }
+  </style>
+</head>
+<body>
+  <h1>Combien de joueurs&nbsp;?</h1>
+  <input id="numberInput" type="number" min="1" max="999" value="100" />
+  <button onclick="startGame()">Commencer</button>
+
+  <script>
+    function startGame() {
+      const numPlayers = parseInt(document.getElementById('numberInput').value, 10);
+      if (!numPlayers || numPlayers <= 0) {
+        alert("Veuillez entrer un nombre de joueurs valide.");
+        return;
+      }
+      // Redirige vers la page du jeu en passant le nb de joueurs en paramètre d'URL
+      window.location.href = 'game.html?players=' + numPlayers;
+    }
+  </script>
+</body>
+</html>
