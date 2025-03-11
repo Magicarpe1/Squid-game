@@ -221,8 +221,7 @@
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
   <div id="winners-overlay"></div>
 
-  <!-- Zone pour afficher la transcription vocale interim si besoin -->
-  <div style="margin-top: 20px; font-size: 1rem; color: #ccc;" id="interimText"></div>
+  <!-- On a retiré le <div id="interimText"> -->
 
   <div id="players-container"></div>
 
@@ -479,10 +478,10 @@
       let recognition = null;
       let isVoiceActive = false;
 
-      // Empêcher la re-sélection multiple d'un même nombre dans l'interim
+      // Pour éviter de sélectionner plusieurs fois le même nombre en interim
       let interimMemory = new Set();
 
-      // Détermine si on TRAITE les commandes
+      // Définit si on TRAITE les commandes
       let isCommandMode = false;
 
       function toggleVoiceRecognition() {
@@ -493,7 +492,6 @@
 
           const voiceBtn = document.getElementById('voice-btn');
           if (!recognition) {
-              // Initialisation
               recognition = new webkitSpeechRecognition();
               recognition.lang = 'fr-FR';
               recognition.interimResults = true;
@@ -505,35 +503,29 @@
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
-                      // Affichage en direct (optionnel)
+                      // On ne fait PLUS rien de visuel (supprimé l'interimText)
                       if (!result.isFinal) {
-                          document.getElementById('interimText').textContent = transcript;
+                          // On n'affiche pas
+                          // On vérifie si on est en mode commande pour "detectNumbersOnTheFly"
+                          if (isCommandMode) detectNumbersOnTheFly(transcript);
                       } else {
-                          document.getElementById('interimText').textContent = '';
+                          // Phrase finale
                           interimMemory.clear();
-                      }
-
-                      // Vérifie si on doit "activer" ou "désactiver"
-                      if (transcript.includes('activer')) {
-                          isCommandMode = true;
-                          console.log('Mode commande activé !');
-                      }
-                      if (transcript.includes('désactiver')) {
-                          isCommandMode = false;
-                          console.log('Mode commande désactivé !');
-                      }
-
-                      // Si on est en mode commande, on interprète
-                      if (isCommandMode) {
-                          if (!result.isFinal) {
-                              // interim => on détecte les nombres
-                              detectNumbersOnTheFly(transcript);
-                          } else {
-                              // final => on traite la commande
+                          // On détecte activation/désactivation
+                          if (transcript.includes('activer')) {
+                              isCommandMode = true;
+                              console.log('Mode commande activé !');
+                          }
+                          if (transcript.includes('désactiver')) {
+                              isCommandMode = false;
+                              console.log('Mode commande désactivé !');
+                          }
+                          // Si on est en mode commande => traite la phrase
+                          if (isCommandMode) {
                               handleVoiceResult(transcript);
                           }
+                          // sinon on ignore
                       }
-                      // Sinon, on ignore simplement ce qui est dit (sauf la détection activer/désactiver ci-dessus)
                   }
               };
 
@@ -581,7 +573,7 @@
           console.log('Reco vocale (final):', finalString);
           const result = finalString;
 
-          // Puis toutes les commandes existantes
+          // "retour"
           if (result.includes('retour')) {
               undoAction();
               return;
@@ -601,7 +593,7 @@
               return;
           }
 
-          // "gagnant" => on lance la musique
+          // "gagnant"
           if (result.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
@@ -653,7 +645,7 @@
               return;
           }
 
-          // "les autres paires de vie" / "les autres paires de devis"
+          // "les autres paires de vie"/"les autres paires de devis"
           if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
               saveState();
               hideWinners();
@@ -706,7 +698,7 @@
           }
       }
 
-      // Démarre
+      // Démarrage initial
       renderPlayers();
   </script>
 </body>
