@@ -248,7 +248,6 @@
       let lastPlayers = null; // stocke l'état précédent
 
       function saveState() {
-          // Clone profond
           lastPlayers = JSON.parse(JSON.stringify(players));
       }
 
@@ -262,18 +261,18 @@
           renderPlayers();
       }
 
-      // === 1b) Transfert de vies (pour la commande "tu peux me transférer X vies") ===
+      // === 1b) Transfert de vies
       function transferLives(donorId, receiverId, amount) {
           const donor = players.find(p => p.id === donorId);
           const receiver = players.find(p => p.id === receiverId);
           if (!donor || !receiver) return;
-          if (donor.lives < amount) amount = donor.lives; // limite si donneur n'a pas assez
+          if (donor.lives < amount) amount = donor.lives;
           donor.lives -= amount;
           receiver.lives += amount;
           renderPlayers();
       }
 
-      // === 2) Audio fade in/out ===
+      // === 2) Audio fade in/out
       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
       audio.volume = 1.0;
       let fadeInterval = null;
@@ -306,7 +305,7 @@
           }, 200);
       }
 
-      // === 3) Rendu players ===
+      // === 3) Rendu players
       function renderPlayers() {
           const container = document.getElementById('players-container');
           container.innerHTML = '';
@@ -336,12 +335,10 @@
           saveState();
           const player = players.find(p => p.id === playerId);
           if (!player) return;
-          // Inverse l'état du gagnant (sélection/désélection)
           player.isWinner = !player.isWinner;
           renderPlayers(); 
       }
 
-      // === 4) Toggle winner manuellement (utilisé aussi dans reconnaissance)
       function toggleWinner(playerId) {
           saveState();
           const p = players.find(x => x.id === playerId);
@@ -351,17 +348,16 @@
           showWinners();
       }
 
-      // Fonction spéciale si on veut activer le joueur immédiatement en mode "interim"
       function toggleWinnerInstant(playerId) {
           saveState();
           const p = players.find(x => x.id === playerId);
           if (!p) return;
-          p.isWinner = true; // on force 'true' pour être sûr qu'il est gagnant
+          p.isWinner = true;
           renderPlayers();
           showWinners();
       }
 
-      // === 5) processRound => "les perdants perdent X vies" manuellement
+      // === 5) processRound
       function processRound() {
           saveState();
           hideWinners();
@@ -376,7 +372,7 @@
           renderPlayers();
       }
 
-      // === 6) reset => confirmation
+      // === 6) reset
       function confirmReset() {
           const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
           if (!sure) return;
@@ -389,7 +385,7 @@
           renderPlayers();
       }
 
-      // === 7) Winners Overlay ===
+      // === 7) Winners Overlay
       function showWinners() {
           const overlay = document.getElementById('winners-overlay');
           overlay.innerHTML = '';
@@ -399,7 +395,6 @@
               return;
           }
 
-          // Masque les cartes gagnantes dans le container
           const children = document.getElementById('players-container').children;
           for (let c of children) {
               const num = c.querySelector('.player-card-number').textContent;
@@ -410,11 +405,9 @@
               }
           }
 
-          // Crée clones en grand
           winners.forEach(w => {
               const clone = document.createElement('div');
               clone.className = 'winner-clone';
-              // Sur clic => on désélectionne ce gagnant
               clone.onclick = () => {
                   saveState();
                   w.isWinner = false;
@@ -442,14 +435,13 @@
           overlay.innerHTML = '';
           overlay.style.display = 'none';
 
-          // Rétablit l'affichage normal
           const children = document.getElementById('players-container').children;
           for (let c of children) {
               c.style.display = '';
           }
       }
 
-      // === 8) showMinusLife => animer "-X"
+      // === 8) showMinusLife
       function showMinusLife(playerId, lostValue) {
           const container = document.getElementById('players-container').children;
           let card = null;
@@ -483,47 +475,65 @@
           };
       }
 
-      // === 9) Reconnaissance vocale togglable (avec interim) ===
+      // === 9) Reconnaissance vocale
       let recognition = null;
       let isVoiceActive = false;
 
-      // Mémoire pour éviter de "re-selectionner" plusieurs fois le même numéro en interim
+      // Empêcher la re-sélection multiple d'un même nombre dans l'interim
       let interimMemory = new Set();
+
+      // Détermine si on TRAITE les commandes
+      let isCommandMode = false;
 
       function toggleVoiceRecognition() {
           if (!('webkitSpeechRecognition' in window)) {
-              console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
+              console.error("La reconnaissance vocale n'est pas supportée.");
               return;
           }
 
           const voiceBtn = document.getElementById('voice-btn');
           if (!recognition) {
+              // Initialisation
               recognition = new webkitSpeechRecognition();
               recognition.lang = 'fr-FR';
-              recognition.interimResults = true;  // On veut un retour instantané
+              recognition.interimResults = true;
               recognition.maxAlternatives = 1;
               recognition.continuous = true;
 
-              // On gère nous-mêmes l'event onresult pour capter l'interim + le final
               recognition.onresult = (event) => {
                   for (let i = event.resultIndex; i < event.results.length; i++) {
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
-                      // Si c'est de l'interim => on agit direct (si on veut)
+                      // Affichage en direct (optionnel)
                       if (!result.isFinal) {
                           document.getElementById('interimText').textContent = transcript;
-                          // Détection instantanée des nombres
-                          detectNumbersOnTheFly(transcript);
-                      } 
-                      else {
-                          // Quand c'est final, on efface l'interim
+                      } else {
                           document.getElementById('interimText').textContent = '';
-                          // On vide la mémoire d'interim pour la prochaine phrase
                           interimMemory.clear();
-                          // Et on traite la phrase finale
-                          handleVoiceResult(transcript);
                       }
+
+                      // Vérifie si on doit "activer" ou "désactiver"
+                      if (transcript.includes('activer')) {
+                          isCommandMode = true;
+                          console.log('Mode commande activé !');
+                      }
+                      if (transcript.includes('désactiver')) {
+                          isCommandMode = false;
+                          console.log('Mode commande désactivé !');
+                      }
+
+                      // Si on est en mode commande, on interprète
+                      if (isCommandMode) {
+                          if (!result.isFinal) {
+                              // interim => on détecte les nombres
+                              detectNumbersOnTheFly(transcript);
+                          } else {
+                              // final => on traite la commande
+                              handleVoiceResult(transcript);
+                          }
+                      }
+                      // Sinon, on ignore simplement ce qui est dit (sauf la détection activer/désactiver ci-dessus)
                   }
               };
 
@@ -544,24 +554,19 @@
           }
       }
 
-      // === 9-bis) Détection "on the fly" pour l'interim
       function detectNumbersOnTheFly(text) {
-          // On cherche tous les nombres (ex: "7", "12", etc.)
           const digitMatches = text.match(/\d+/g);
           if (digitMatches) {
               digitMatches.forEach(numStr => {
                   const numVal = parseInt(numStr, 10);
-                  // Pour éviter de déclencher plusieurs fois sur le même nombre
                   if (!interimMemory.has(numVal)) {
                       interimMemory.add(numVal);
-                      // On active direct ce joueur
                       toggleWinnerInstant(numVal);
                   }
               });
           }
       }
 
-      // === 10) Traitement du résultat vocal (string finale) ===
       const spelledNumbers = {
           'un': 1, 'une': 1,
           'deux': 2, 'de': 2,
@@ -574,10 +579,9 @@
 
       function handleVoiceResult(finalString) {
           console.log('Reco vocale (final):', finalString);
-
           const result = finalString;
 
-          // "retour" => undoAction
+          // Puis toutes les commandes existantes
           if (result.includes('retour')) {
               undoAction();
               return;
@@ -677,7 +681,6 @@
               let amountRaw = amountMatch[1].toLowerCase();
               let amountVal = spelledNumbers[amountRaw] !== undefined ? spelledNumbers[amountRaw] : parseInt(amountRaw, 10);
 
-              // On cherche 2 nombres consécutifs => donneur et receveur
               const digits = result.match(/\d+/g);
               if (!digits || digits.length < 2) {
                   console.warn("Pas assez de nombres pour détecter donneur / receveur");
@@ -689,7 +692,7 @@
               return;
           }
 
-          // Sinon on détecte "gagnant X Y Z"
+          // Sinon "gagnant X Y Z"
           const matches = result.match(/\d+/g);
           if (matches) {
               saveState();
@@ -703,7 +706,7 @@
           }
       }
 
-      // Lancement initial
+      // Démarre
       renderPlayers();
   </script>
 </body>
