@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -221,6 +221,9 @@
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
   <div id="winners-overlay"></div>
 
+  <!-- Zone pour afficher la transcription vocale interim si besoin -->
+  <div style="margin-top: 20px; font-size: 1rem; color: #ccc;" id="interimText"></div>
+
   <div id="players-container"></div>
 
   <div class="buttons-container">
@@ -232,8 +235,12 @@
   </div>
 
   <script>
+      // === 0) Récupération du nombre de joueurs via l'URL ===
+      const urlParams = new URLSearchParams(window.location.search);
+      const numPlayers = parseInt(urlParams.get('players'), 10) || 100;
+
       // === 1) Players + snapshot pour annuler (retour) ===
-      let players = Array.from({ length: 100 }, (_, i) => ({
+      let players = Array.from({ length: numPlayers }, (_, i) => ({
           id: i + 1,
           lives: 6,
           isWinner: false,
@@ -252,6 +259,17 @@
           }
           players = JSON.parse(JSON.stringify(lastPlayers));
           hideWinners();
+          renderPlayers();
+      }
+
+      // === 1b) Transfert de vies (pour la commande "tu peux me transférer X vies") ===
+      function transferLives(donorId, receiverId, amount) {
+          const donor = players.find(p => p.id === donorId);
+          const receiver = players.find(p => p.id === receiverId);
+          if (!donor || !receiver) return;
+          if (donor.lives < amount) amount = donor.lives; // limite si donneur n'a pas assez
+          donor.lives -= amount;
+          receiver.lives += amount;
           renderPlayers();
       }
 
@@ -313,21 +331,19 @@
               playerCard.appendChild(playerLives);
               container.appendChild(playerCard);
           });
-     
       }
       function toggleWinnerManually(playerId) {
-          saveState(); 
+          saveState();
           const player = players.find(p => p.id === playerId);
           if (!player) return;
-
           // Inverse l'état du gagnant (sélection/désélection)
           player.isWinner = !player.isWinner;
-          renderPlayers(); // Met à jour l'affichage
+          renderPlayers(); 
       }
 
-      // === 4) Toggle winner manuellement ===
+      // === 4) Toggle winner manuellement (utilisé dans la reconnaissance vocale)
       function toggleWinner(playerId) {
-          saveState(); 
+          saveState();
           const p = players.find(x => x.id === playerId);
           if (!p) return;
           p.isWinner = !p.isWinner;
@@ -457,7 +473,7 @@
           };
       }
 
-      // === 9) Reconnaissance vocale togglable
+      // === 9) Reconnaissance vocale togglable (avec interim) ===
       let recognition = null;
       let isVoiceActive = false;
 
@@ -471,11 +487,27 @@
           if (!recognition) {
               recognition = new webkitSpeechRecognition();
               recognition.lang = 'fr-FR';
-              recognition.interimResults = false;
+              recognition.interimResults = true;     // On veut un retour instantané
               recognition.maxAlternatives = 1;
               recognition.continuous = true;
 
-              recognition.onresult = handleVoiceResult;
+              // On gère nous-mêmes l'event onresult pour capter l'interim + le final
+              recognition.onresult = (event) => {
+                  for (let i = event.resultIndex; i < event.results.length; i++) {
+                      const result = event.results[i];
+                      const transcript = result[0].transcript.toLowerCase().trim();
+
+                      // Affiche (ou log) l'interim
+                      if (!result.isFinal) {
+                          document.getElementById('interimText').textContent = transcript;
+                      } else {
+                          // Quand c'est final, on efface l'interim et on traite
+                          document.getElementById('interimText').textContent = '';
+                          handleVoiceResult(transcript);
+                      }
+                  }
+              };
+
               recognition.onerror = (e) => console.error('Erreur vocale:', e.error);
               recognition.onend = () => {
                   if (isVoiceActive) recognition.start();
@@ -493,7 +525,7 @@
           }
       }
 
-      // === 10) Traitement du résultat vocal
+      // === 10) Traitement du résultat vocal (string finale) ===
       const spelledNumbers = {
           'un': 1, 'une': 1,
           'deux': 2, 'de': 2,
@@ -504,9 +536,10 @@
           'devis': 2, 'paires': 2
       };
 
-      function handleVoiceResult(event) {
-          const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
-          console.log('Reco vocale:', result);
+      function handleVoiceResult(finalString) {
+          console.log('Reco vocale (final):', finalString);
+
+          const result = finalString;
 
           // "retour" => undoAction
           if (result.includes('retour')) {
@@ -528,7 +561,7 @@
               return;
           }
 
-          // "gagnant"
+          // "gagnant" => on lance la musique
           if (result.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
@@ -580,26 +613,8 @@
               return;
           }
 
-          // "les autres paires de vie"
-          if (result.includes('les autres paires de vie')) {
-              saveState();
-              hideWinners();
-              stopAudioFadeOut();
-              const val = 2;
-              players.forEach(p => {
-                  if (!p.isWinner && p.lives > 0) {
-                      p.lives -= val;
-                      if (p.lives < 0) p.lives = 0;
-                      showMinusLife(p.id, val);
-                  }
-                  p.isWinner = false;
-              });
-              renderPlayers();
-              return;
-          }
-
-          // "les autres paires de devis"
-          if (result.includes('les autres paires de devis')) {
+          // "les autres paires de vie" / "les autres paires de devis"
+          if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
               saveState();
               hideWinners();
               stopAudioFadeOut();
@@ -620,15 +635,17 @@
           if (result.includes('tu peux me transférer')) {
               saveState();
               hideWinners();
+              // On cherche la valeur "X" => un/une/deux/...
               const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
               if (!amountMatch) return;
 
               let amountRaw = amountMatch[1].toLowerCase();
               let amountVal = spelledNumbers[amountRaw] !== undefined ? spelledNumbers[amountRaw] : parseInt(amountRaw, 10);
 
+              // On cherche 2 nombres consécutifs => donneur et receveur
               const digits = result.match(/\d+/g);
               if (!digits || digits.length < 2) {
-                  console.warn("Pas assez de nombres pour detecter donneur / receveur");
+                  console.warn("Pas assez de nombres pour détecter donneur / receveur");
                   return;
               }
               const donorId = parseInt(digits[0], 10);
@@ -637,7 +654,7 @@
               return;
           }
 
-          // "gagnant 5 10"
+          // Sinon on détecte "gagnant X Y Z"
           const matches = result.match(/\d+/g);
           if (matches) {
               saveState();
