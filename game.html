@@ -341,12 +341,22 @@
           renderPlayers(); 
       }
 
-      // === 4) Toggle winner manuellement (utilisé dans la reconnaissance vocale)
+      // === 4) Toggle winner manuellement (utilisé aussi dans reconnaissance)
       function toggleWinner(playerId) {
           saveState();
           const p = players.find(x => x.id === playerId);
           if (!p) return;
           p.isWinner = !p.isWinner;
+          renderPlayers();
+          showWinners();
+      }
+
+      // Fonction spéciale si on veut activer le joueur immédiatement en mode "interim"
+      function toggleWinnerInstant(playerId) {
+          saveState();
+          const p = players.find(x => x.id === playerId);
+          if (!p) return;
+          p.isWinner = true; // on force 'true' pour être sûr qu'il est gagnant
           renderPlayers();
           showWinners();
       }
@@ -477,6 +487,9 @@
       let recognition = null;
       let isVoiceActive = false;
 
+      // Mémoire pour éviter de "re-selectionner" plusieurs fois le même numéro en interim
+      let interimMemory = new Set();
+
       function toggleVoiceRecognition() {
           if (!('webkitSpeechRecognition' in window)) {
               console.error('La reconnaissance vocale n’est pas prise en charge par ce navigateur.');
@@ -487,7 +500,7 @@
           if (!recognition) {
               recognition = new webkitSpeechRecognition();
               recognition.lang = 'fr-FR';
-              recognition.interimResults = true;     // On veut un retour instantané
+              recognition.interimResults = true;  // On veut un retour instantané
               recognition.maxAlternatives = 1;
               recognition.continuous = true;
 
@@ -497,12 +510,18 @@
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
-                      // Affiche (ou log) l'interim
+                      // Si c'est de l'interim => on agit direct (si on veut)
                       if (!result.isFinal) {
                           document.getElementById('interimText').textContent = transcript;
-                      } else {
-                          // Quand c'est final, on efface l'interim et on traite
+                          // Détection instantanée des nombres
+                          detectNumbersOnTheFly(transcript);
+                      } 
+                      else {
+                          // Quand c'est final, on efface l'interim
                           document.getElementById('interimText').textContent = '';
+                          // On vide la mémoire d'interim pour la prochaine phrase
+                          interimMemory.clear();
+                          // Et on traite la phrase finale
                           handleVoiceResult(transcript);
                       }
                   }
@@ -522,6 +541,23 @@
               isVoiceActive = false;
               recognition.stop();
               voiceBtn.textContent = "Activer la Reconnaissance Vocale";
+          }
+      }
+
+      // === 9-bis) Détection "on the fly" pour l'interim
+      function detectNumbersOnTheFly(text) {
+          // On cherche tous les nombres (ex: "7", "12", etc.)
+          const digitMatches = text.match(/\d+/g);
+          if (digitMatches) {
+              digitMatches.forEach(numStr => {
+                  const numVal = parseInt(numStr, 10);
+                  // Pour éviter de déclencher plusieurs fois sur le même nombre
+                  if (!interimMemory.has(numVal)) {
+                      interimMemory.add(numVal);
+                      // On active direct ce joueur
+                      toggleWinnerInstant(numVal);
+                  }
+              });
           }
       }
 
@@ -635,7 +671,6 @@
           if (result.includes('tu peux me transférer')) {
               saveState();
               hideWinners();
-              // On cherche la valeur "X" => un/une/deux/...
               const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
               if (!amountMatch) return;
 
