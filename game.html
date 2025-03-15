@@ -4,101 +4,307 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Squid Game - Gestion des Joueurs</title>
-
   <style>
-    /* ... tout ton style existant (player-card, etc.) ... */
+      @font-face {
+          font-family: "GameOfSquids";
+          src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
+      }
+      @font-face {
+          font-family: "PlayerFont";
+          src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
+      }
 
-    /* Overlay du décompte */
-    #countdown-overlay {
-      display: none;
-      position: fixed;
-      top:0; left:0; right:0; bottom:0;
-      /* Fond GIF */
-      background: url("https://media2.giphy.com/media/vYgA05wKXUtudv6lVe/giphy.gif") center center no-repeat;
-      background-size: cover;
+      body {
+          font-family: "GameOfSquids", sans-serif;
+          background-color: #101010;
+          color: white;
+          text-align: center;
+          margin: 0;
+          padding: 20px;
+      }
+      h1 {
+          font-size: 3rem;
+          margin: 20px 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          color: white;
+      }
+      h1 span {
+          display: inline-block;
+          font-family: "GameOfSquids", sans-serif;
+          font-size: 3rem;
+      }
+      h1 span.shape-circle {
+          color: #ff3e68;
+      }
+      h1 span.shape-triangle {
+          color: #ff3e68;
+      }
+      h1 span.shape-square {
+          color: #ff3e68;
+          transform: scale(1.4);
+          display: inline-block;
+      }
 
-      z-index: 999999;
-      justify-content: center;
-      align-items: center;
-    }
-    #countdown-number {
-      font-size: 8rem;
-      color: #ff3e68;
-      font-family: "GameOfSquids", sans-serif;
-      /* éventuel style pour faire ressortir le texte */
-      text-shadow: 2px 2px 6px black;
-    }
+      /* Container principal des joueurs */
+      #players-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 10px;
+      }
+      .player-card {
+          width: 80px;
+          height: 120px;
+          border: 2px solid white;
+          border-radius: 5px;
+          background-color: #007575;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-direction: column;
+          cursor: pointer;
+          font-family: "PlayerFont", sans-serif;
+          position: relative;
+      }
+      .player-card.active {
+          border-color: limegreen;
+          background-color: #0a0;
+      }
+      .player-card.no-lives {
+          background-color: #505050 !important;
+          opacity: 0.7;
+      }
+
+      .player-card-number {
+          font-size: 2rem;
+          color: white;
+          background-color: #005050;
+          padding: 5px 10px;
+          border: 2px solid white;
+          border-radius: 5px;
+      }
+      .player-lives {
+          font-size: 1.6rem; 
+          color: white;
+          margin-top: 5px;
+      }
+
+      /* Boutons en bas */
+      .buttons-container {
+          margin-top: 400px;
+      }
+      button {
+          padding: 10px 20px;
+          font-size: 1.2rem;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          margin: 20px 10px;
+          font-family: "GameOfSquids", sans-serif;
+      }
+      #submit-btn {
+          background-color: #ff3e68;
+          color: white;
+      }
+      #submit-btn:hover {
+          background-color: #c32d4e;
+      }
+      #reset-btn {
+          background-color: #32cd32;
+          color: white;
+      }
+      #reset-btn:hover {
+          background-color: #228b22;
+      }
+      #undo-btn {
+          background-color: #888;
+          color: white;
+      }
+      #undo-btn:hover {
+          background-color: #555;
+      }
+      #voice-btn {
+          background-color: #3f51b5;
+          color: white;
+      }
+      #voice-btn:hover {
+          background-color: #303f9f;
+      }
+      #teams-btn {
+          background-color: #ffcc00;
+          color: #000;
+      }
+      #teams-btn:hover {
+          background-color: #e6b800;
+      }
+      #lives-input {
+          padding: 10px;
+          font-size: 1.2rem;
+          border-radius: 5px;
+          border: 1px solid #fff;
+          margin: 20px;
+          background-color: #202020;
+          color: #fff;
+      }
+
+      /* Animation du coeur */
+      .heart-animation {
+          position: absolute;
+          font-size: 2rem;
+          color: red;
+          z-index: 9999;
+          pointer-events: none;
+          opacity: 1;
+      }
+      .minus-life {
+          position: absolute;
+          color: red;
+          font-size: 1.5rem;
+          font-weight: bold;
+          opacity: 1;
+          transform: translate(-50%, 0);
+          pointer-events: none;
+      }
+
+      /* Overlay pour l'affichage en grand des gagnants */
+      #winners-overlay {
+          display: none;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: rgba(0,0,0,0.9);
+          z-index: 99999;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 20px;
+          padding: 20px;
+      }
+      .winner-clone {
+          width: 140px; 
+          height: 200px;
+          margin: 10px;
+          background-color: #007575;
+          border: 3px solid #fff;
+          border-radius: 5px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          animation: fadein 0.3s ease;
+      }
+      .winner-clone .clone-number {
+          font-size: 3rem;
+          background-color: #005050;
+          color: #fff;
+          border: 2px solid #fff;
+          border-radius: 5px;
+          padding: 5px 10px;
+          margin: 5px;
+      }
+      .winner-clone .clone-lives {
+          font-size: 1.5rem;
+          color: #fff;
+          margin-top: 5px;
+      }
+      @keyframes fadein {
+          from { transform: scale(0.8); opacity: 0; }
+          to   { transform: scale(1); opacity: 1; }
+      }
+
+      /* Overlay pour le décompte */
+      #countdown-overlay {
+          display: none;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: rgba(0,0,0,0.8);
+          z-index: 999999;
+          justify-content: center;
+          align-items: center;
+      }
+      #countdown-number {
+          font-size: 8rem;
+          color: #ff3e68;
+          font-family: "GameOfSquids", sans-serif;
+      }
   </style>
 </head>
 <body>
-  <!-- ... ton HTML (h1, players-container, winners-overlay, etc.) ... -->
+  <h1>
+      <span>SQUID</span>
+      <span class="shape-circle">O</span>
+      <span class="shape-triangle">Δ</span>
+      <span class="shape-square">■</span>
+      <span>GAME</span>
+  </h1>
+  <p>À qui le tour ?</p>
 
-  <!-- Overlay pour le décompte (modifié pour y mettre le gif) -->
+  <!-- Overlay pour les gagnants -->
+  <div id="winners-overlay"></div>
+
+  <!-- Overlay pour le décompte -->
   <div id="countdown-overlay">
-    <div id="countdown-number">셋</div>
+      <div id="countdown-number">3</div>
+  </div>
+
+  <!-- Container principal (joueurs) -->
+  <div id="players-container"></div>
+
+  <!-- Container des équipes (sera affiché après répartition) -->
+  <div id="teams-container" style="display:none;"></div>
+
+  <div class="buttons-container">
+      <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
+      <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
+      <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
+      <button id="undo-btn" onclick="undoAction()">Retour</button>
+      <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+      <!-- Bouton pour créer les équipes -->
+      <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
   </div>
 
   <script>
-    // ... ton code existant: renderPlayers, createTeams, etc. ...
-    // On adapte juste startCountdown.
+      // === 0) Récupération du nombre de joueurs via l'URL ===
+      const urlParams = new URLSearchParams(window.location.search);
+      const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
-    // Exemple : on a 3 audios (fichiers mp3) => 
-    //   'count_ses.mp3' (셋) 
-    //   'count_dul.mp3' (둘) 
-    //   'count_hana.mp3' (하나)
-    // Tu dois toi-même fournir ces enregistrements vocaux féminins.
+      // === 1) Initialisation des joueurs ===
+      let players = Array.from({ length: numPlayers }, (_, i) => ({
+          id: i + 1,
+          lives: 6,
+          isWinner: false,
+      }));
+      let lastPlayers = null;
 
-    const countdownData = [
-      { text: "셋", audio: "count_ses.mp3" },   // 3
-      { text: "둘", audio: "count_dul.mp3" },   // 2
-      { text: "하나", audio: "count_hana.mp3" } // 1
-    ];
+      function saveState() {
+          lastPlayers = JSON.parse(JSON.stringify(players));
+      }
+      function undoAction() {
+          if (!lastPlayers) {
+              console.warn("Aucune action à annuler");
+              return;
+          }
+          players = JSON.parse(JSON.stringify(lastPlayers));
+          hideWinners();
+          renderPlayers();
+      }
 
-    function createTeams(){
-      const nb = prompt("Combien d'équipes ?", "2");
-      if(!nb || isNaN(nb) || nb<1) return;
+      // === 1b) Transfert de vies ===
+      function transferLives(donorId, receiverId, amount) {
+          const donor = players.find(p => p.id === donorId);
+          const receiver = players.find(p => p.id === receiverId);
+          if (!donor || !receiver) return;
+          if (donor.lives < amount) amount = donor.lives;
+          donor.lives -= amount;
+          receiver.lives += amount;
+          renderPlayers();
+      }
 
-      // Lancement du décompte
-      startCountdownKR(()=>{
-        distributionEquipes(parseInt(nb,10));
-      });
-    }
-
-    function startCountdownKR(callback){
-      // On affiche l'overlay
-      const over= document.getElementById('countdown-overlay');
-      over.style.display='flex';
-
-      const numEl= document.getElementById('countdown-number');
-      let index= 0;
-      numEl.textContent = countdownData[index].text;
-
-      // On joue l'audio pour la 1ère val
-      playAudio(countdownData[index].audio);
-
-      // On compte 3 étapes : 셋 (3), 둘 (2), 하나 (1)
-      const timer= setInterval(()=>{
-        index++;
-        if(index >= countdownData.length){
-          // fin
-          clearInterval(timer);
-          over.style.display='none';
-          callback();
-        } else {
-          numEl.textContent= countdownData[index].text;
-          playAudio(countdownData[index].audio);
-        }
-      }, 1000); // toutes les 1s, on passe au suivant
-    }
-
-    function playAudio(src){
-      // On crée un audio éphémère
-      const audio = new Audio(src);
-      audio.play().catch(err=>console.warn("Audio error:", err));
-    }
-
-    // distributionEquipes => le code existant
-    // ...
-  </script>
-</body>
-</html>
+      // === 2) Audio fade in/out ===
+      const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
+      audio.volume = 1.0;
+      let fadeInterval = null;
+      function playAudioFadeIn() {
+          if (fadeInter
