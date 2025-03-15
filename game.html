@@ -7,11 +7,11 @@
   <style>
       @font-face {
           font-family: "GameOfSquids";
-          src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
+          src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf");
       }
       @font-face {
           font-family: "PlayerFont";
-          src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
+          src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf");
       }
 
       body {
@@ -48,6 +48,7 @@
           display: inline-block;
       }
 
+      /* Conteneur principal */
       #players-container {
           display: flex;
           flex-wrap: wrap;
@@ -68,6 +69,10 @@
           cursor: pointer;
           font-family: "PlayerFont", sans-serif;
           position: relative;
+          transition: transform 0.2s;
+      }
+      .player-card:hover {
+          transform: scale(1.05);
       }
       .player-card.active {
           border-color: limegreen;
@@ -92,9 +97,8 @@
           margin-top: 5px;
       }
 
-      /* Boutons très bas */
       .buttons-container {
-          margin-top: 400px; /* Ajuste si tu veux descendre encore plus */
+          margin-top: 400px;
       }
       button {
           padding: 10px 20px;
@@ -133,6 +137,14 @@
       #voice-btn:hover {
           background-color: #303f9f;
       }
+      #teams-btn {
+          background-color: #ffd700;
+          color: black;
+      }
+      #teams-btn:hover {
+          background-color: #ffca2c;
+      }
+
       #lives-input {
           padding: 10px;
           font-size: 1.2rem;
@@ -143,7 +155,6 @@
           color: #fff;
       }
 
-      /* Animation du coeur */
       .heart-animation {
           position: absolute;
           font-size: 2rem;
@@ -162,9 +173,8 @@
           pointer-events: none;
       }
 
-      /* Overlay pour l'affichage en grand des gagnants */
       #winners-overlay {
-          display: none; /* Par défaut masqué */
+          display: none;
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
           background-color: rgba(0, 0, 0, 0.9);
@@ -206,6 +216,67 @@
           from { transform: scale(0.8); opacity: 0; }
           to   { transform: scale(1); opacity: 1; }
       }
+
+      /* Overlay pour la roue */
+      #wheel-overlay {
+          display: none;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.8);
+          z-index: 999999;
+          justify-content: center;
+          align-items: center;
+          flex-direction: column;
+      }
+      .wheel-container {
+          position: relative;
+          width: 400px;
+          height: 400px;
+          border-radius: 50%;
+          overflow: hidden;
+          border: 4px solid #fff;
+      }
+      /* Roue interne */
+      #wheel {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          transform: rotate(0deg);
+          transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
+      }
+      .wheel-slice {
+          position: absolute;
+          width: 200px; /* la moitié du container */
+          height: 200px;
+          transform-origin: bottom right;
+          background-color: #007575;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #101010;
+          text-align: center;
+          font-family: "PlayerFont", sans-serif;
+          font-size: 0.9rem;
+          padding: 10px;
+          box-sizing: border-box;
+      }
+      .pointer {
+          width: 0; 
+          height: 0; 
+          border-left: 25px solid transparent;
+          border-right: 25px solid transparent;
+          border-bottom: 30px solid #fff;
+          margin-top: 20px;
+      }
+      .spin-btn {
+          background-color: #ff4040;
+          color: #fff;
+      }
+      .spin-btn:hover {
+          background-color: #d03333;
+      }
   </style>
 </head>
 <body>
@@ -218,10 +289,17 @@
   </h1>
   <p>À qui le tour ?</p>
 
-  <!-- Overlay caché pour l'affichage en grand des gagnants -->
+  <!-- Overlay gagnants -->
   <div id="winners-overlay"></div>
 
-  <!-- On a retiré le <div id="interimText"> -->
+  <!-- Overlay roue -->
+  <div id="wheel-overlay">
+    <div class="pointer"></div>
+    <div class="wheel-container">
+      <div id="wheel"></div>
+    </div>
+    <button class="spin-btn" onclick="spinWheel()">Lancer la Roue</button>
+  </div>
 
   <div id="players-container"></div>
 
@@ -231,25 +309,32 @@
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+
+      <!-- Bouton pour créer des équipes -->
+      <button id="teams-btn" onclick="createTeams()">Créer des équipes</button>
   </div>
 
   <script>
-      // === 0) Récupération du nombre de joueurs via l'URL ===
+      // =============================
+      // ====== LOGIQUE DE BASE ======
+      // =============================
+
+      // 0) Récupération du nombre de joueurs
       const urlParams = new URLSearchParams(window.location.search);
       const numPlayers = parseInt(urlParams.get('players'), 10) || 100;
 
-      // === 1) Players + snapshot pour annuler (retour) ===
+      // On stocke : id, lives, isWinner, team
       let players = Array.from({ length: numPlayers }, (_, i) => ({
           id: i + 1,
           lives: 6,
           isWinner: false,
+          team: null
       }));
-      let lastPlayers = null; // stocke l'état précédent
+      let lastPlayers = null; // snapshot
 
       function saveState() {
           lastPlayers = JSON.parse(JSON.stringify(players));
       }
-
       function undoAction() {
           if (!lastPlayers) {
               console.warn("Aucune action à annuler");
@@ -260,103 +345,57 @@
           renderPlayers();
       }
 
-      // === 1b) Transfert de vies
-      function transferLives(donorId, receiverId, amount) {
-          const donor = players.find(p => p.id === donorId);
-          const receiver = players.find(p => p.id === receiverId);
-          if (!donor || !receiver) return;
-          if (donor.lives < amount) amount = donor.lives;
-          donor.lives -= amount;
-          receiver.lives += amount;
-          renderPlayers();
-      }
-
-      // === 2) Audio fade in/out
-      const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-      audio.volume = 1.0;
-      let fadeInterval = null;
-      function playAudioFadeIn() {
-          if (fadeInterval) clearInterval(fadeInterval);
-          audio.pause();
-          audio.currentTime = 0;
-          audio.volume = 0;
-          audio.play().catch(err => console.warn("Impossible audio:", err));
-          fadeInterval = setInterval(() => {
-              if (audio.volume < 1) {
-                  audio.volume = Math.min(audio.volume + 0.1, 1);
-              } else {
-                  clearInterval(fadeInterval);
-                  fadeInterval = null;
-              }
-          }, 200);
-      }
-      function stopAudioFadeOut() {
-          if (fadeInterval) clearInterval(fadeInterval);
-          fadeInterval = setInterval(() => {
-              if (audio.volume > 0.1) {
-                  audio.volume -= 0.1;
-              } else {
-                  audio.pause();
-                  audio.currentTime = 0;
-                  clearInterval(fadeInterval);
-                  fadeInterval = null;
-              }
-          }, 200);
-      }
-
-      // === 3) Rendu players
       function renderPlayers() {
           const container = document.getElementById('players-container');
           container.innerHTML = '';
-          players.forEach(player => {
+          players.forEach(p => {
               let cardClass = 'player-card';
-              if (player.isWinner) cardClass += ' active';
-              if (player.lives <= 0) cardClass += ' no-lives';
+              if (p.isWinner) cardClass += ' active';
+              if (p.lives <= 0) cardClass += ' no-lives';
 
-              const playerCard = document.createElement('div');
-              playerCard.className = cardClass;
-              playerCard.onclick = () => toggleWinnerManually(player.id);
+              const card = document.createElement('div');
+              card.className = cardClass;
+              card.onclick = () => toggleWinnerManually(p.id);
 
-              const playerNumber = document.createElement('div');
-              playerNumber.className = 'player-card-number';
-              playerNumber.textContent = player.id.toString().padStart(3, '0');
+              const numDiv = document.createElement('div');
+              numDiv.className = 'player-card-number';
+              numDiv.textContent = p.id.toString().padStart(3, '0');
 
-              const playerLives = document.createElement('div');
-              playerLives.className = 'player-lives';
-              playerLives.textContent = Vies: ${player.lives};
+              const livesDiv = document.createElement('div');
+              livesDiv.className = 'player-lives';
+              livesDiv.textContent = `Vies: ${p.lives}`;
 
-              playerCard.appendChild(playerNumber);
-              playerCard.appendChild(playerLives);
-              container.appendChild(playerCard);
+              card.appendChild(numDiv);
+              card.appendChild(livesDiv);
+
+              container.appendChild(card);
           });
       }
-      function toggleWinnerManually(playerId) {
+      function toggleWinnerManually(pid) {
           saveState();
-          const player = players.find(p => p.id === playerId);
-          if (!player) return;
-          player.isWinner = !player.isWinner;
-          renderPlayers(); 
+          const pl = players.find(x => x.id === pid);
+          if (!pl) return;
+          pl.isWinner = !pl.isWinner;
+          renderPlayers();
       }
 
-      function toggleWinner(playerId) {
+      function toggleWinner(pid) {
           saveState();
-          const p = players.find(x => x.id === playerId);
-          if (!p) return;
-          p.isWinner = !p.isWinner;
+          const pl = players.find(x => x.id === pid);
+          if (!pl) return;
+          pl.isWinner = !pl.isWinner;
+          renderPlayers();
+          showWinners();
+      }
+      function toggleWinnerInstant(pid) {
+          saveState();
+          const pl = players.find(x => x.id === pid);
+          if (!pl) return;
+          pl.isWinner = true;
           renderPlayers();
           showWinners();
       }
 
-      function toggleWinnerInstant(playerId) {
-          saveState();
-          const p = players.find(x => x.id === playerId);
-          if (!p) return;
-          p.isWinner = true;
-          renderPlayers();
-          showWinners();
-      }
-
-      // === 5) processRound
       function processRound() {
           saveState();
           hideWinners();
@@ -370,8 +409,6 @@
           });
           renderPlayers();
       }
-
-      // === 6) reset
       function confirmReset() {
           const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
           if (!sure) return;
@@ -380,30 +417,30 @@
           players.forEach(p => {
               p.lives = 6;
               p.isWinner = false;
+              p.team = null;
           });
           renderPlayers();
       }
 
-      // === 7) Winners Overlay
+      // Overlay winners
       function showWinners() {
           const overlay = document.getElementById('winners-overlay');
           overlay.innerHTML = '';
-          const winners = players.filter(p => p.isWinner);
+          const winners = players.filter(x => x.isWinner);
           if (winners.length === 0) {
               overlay.style.display = 'none';
               return;
           }
-
-          const children = document.getElementById('players-container').children;
-          for (let c of children) {
-              const num = c.querySelector('.player-card-number').textContent;
-              const id = parseInt(num, 10);
-              const pl = players.find(x => x.id === id);
-              if (pl && pl.isWinner) {
-                  c.style.display = 'none';
+          // On masque leur carte
+          const cards = document.querySelectorAll('#players-container .player-card');
+          cards.forEach(card => {
+              const num = parseInt(card.querySelector('.player-card-number').textContent);
+              const p = players.find(x => x.id === num);
+              if (p && p.isWinner) {
+                  card.style.display = 'none';
               }
-          }
-
+          });
+          // On ajoute un clone
           winners.forEach(w => {
               const clone = document.createElement('div');
               clone.className = 'winner-clone';
@@ -414,16 +451,16 @@
                   renderPlayers();
               };
 
-              const cloneNumber = document.createElement('div');
-              cloneNumber.className = 'clone-number';
-              cloneNumber.textContent = w.id.toString().padStart(3, '0');
+              const numDiv = document.createElement('div');
+              numDiv.className = 'clone-number';
+              numDiv.textContent = w.id.toString().padStart(3,'0');
 
-              const cloneLives = document.createElement('div');
-              cloneLives.className = 'clone-lives';
-              cloneLives.textContent = Vies: ${w.lives};
+              const livesDiv = document.createElement('div');
+              livesDiv.className = 'clone-lives';
+              livesDiv.textContent = `Vies: ${w.lives}`;
 
-              clone.appendChild(cloneNumber);
-              clone.appendChild(cloneLives);
+              clone.appendChild(numDiv);
+              clone.appendChild(livesDiv);
               overlay.appendChild(clone);
           });
 
@@ -433,31 +470,23 @@
           const overlay = document.getElementById('winners-overlay');
           overlay.innerHTML = '';
           overlay.style.display = 'none';
-
-          const children = document.getElementById('players-container').children;
-          for (let c of children) {
-              c.style.display = '';
-          }
+          // On réaffiche toutes les cartes
+          const cards = document.querySelectorAll('#players-container .player-card');
+          cards.forEach(c => c.style.display = '');
       }
 
-      // === 8) showMinusLife
-      function showMinusLife(playerId, lostValue) {
-          const container = document.getElementById('players-container').children;
-          let card = null;
-          for (let c of container) {
-              const numberDiv = c.querySelector('.player-card-number');
-              const cardId = parseInt(numberDiv.textContent);
-              if (cardId === playerId) {
-                  card = c;
-                  break;
-              }
-          }
-          if (!card) return;
-
-          const rect = card.getBoundingClientRect();
+      function showMinusLife(pid, lostVal) {
+          const cards = document.querySelectorAll('#players-container .player-card');
+          let target = null;
+          cards.forEach(c => {
+              const n = parseInt(c.querySelector('.player-card-number').textContent);
+              if (n === pid) target = c;
+          });
+          if (!target) return;
+          const rect = target.getBoundingClientRect();
           const minusEl = document.createElement('div');
           minusEl.className = 'minus-life';
-          minusEl.textContent = -${lostValue};
+          minusEl.textContent = `-${lostVal}`;
           document.body.appendChild(minusEl);
 
           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
@@ -474,22 +503,120 @@
           };
       }
 
-      // === 9) Reconnaissance vocale
+      // ==============================
+      // =========== TEAMS ============
+      // ==============================
+      let teamWheelSlices = [];
+      let currentTeamsCount = 0;
+      let currentTeamIndex = 0; // pour round-robin
+
+      function createTeams() {
+          const nb = prompt("Combien d'équipes ?", "4");
+          if (!nb || isNaN(nb) || nb <= 0) return;
+          currentTeamsCount = parseInt(nb,10);
+          saveState();
+
+          // On enlève toute team précédente
+          players.forEach(p => p.team = null);
+
+          // On prépare la liste de joueurs restants
+          teamWheelSlices = [...players]; // shallow copy
+          // On ouvre l'overlay
+          openWheelOverlay();
+          buildWheel(teamWheelSlices);
+      }
+
+      function openWheelOverlay() {
+          document.getElementById('wheel-overlay').style.display = 'flex';
+      }
+      function closeWheelOverlay() {
+          document.getElementById('wheel-overlay').style.display = 'none';
+      }
+
+      // Construit la roue HTML
+      function buildWheel(sliceList) {
+          const wheel = document.getElementById('wheel');
+          wheel.innerHTML = '';
+
+          if (sliceList.length === 0) {
+              // plus personne => on ferme la roue
+              closeWheelOverlay();
+              renderPlayers();
+              alert(`Répartition terminée avec ${currentTeamsCount} équipes !`);
+              return;
+          }
+
+          // Pour chaque joueur => slice
+          const sliceDeg = 360 / sliceList.length;
+          sliceList.forEach((p, index) => {
+              const slice = document.createElement('div');
+              slice.className = 'wheel-slice';
+              // angle
+              const startAngle = index * sliceDeg;
+              slice.style.transform = `rotate(${startAngle}deg) translate(-100%, 0)`; 
+              
+              // Couleur variable ?
+              slice.style.backgroundColor = randomColor(index);
+              slice.textContent = `#${p.id.toString().padStart(3,'0')}`;
+              wheel.appendChild(slice);
+          });
+          // remise à 0 du style => for next spin
+          wheel.style.transform = `rotate(0deg)`;
+      }
+
+      function randomColor(i) {
+          // On peut faire un color pastel aléatoire, ou fixe
+          const hue = (i * 42) % 360;
+          return `hsl(${hue}, 70%, 50%)`;
+      }
+
+      function spinWheel() {
+          const wheel = document.getElementById('wheel');
+          if (!teamWheelSlices.length) return;
+
+          // On choisit un angle random
+          // ex. un random entre 360 * 5 et 360 * 8
+          const rounds = 5 + Math.floor(Math.random()*4); 
+          const randomSlice = Math.floor(Math.random() * teamWheelSlices.length);
+          const sliceDeg = 360 / teamWheelSlices.length;
+          // On veut s'arrêter centré sur la slice random
+          const stopAngle = 360 - (randomSlice * sliceDeg) - (sliceDeg/2);
+          const finalAngle = rounds*360 + stopAngle;
+
+          wheel.style.transition = 'transform 4s cubic-bezier(0.33,1,0.68,1)';
+          wheel.style.transform = `rotate(${finalAngle}deg)`;
+
+          // On attend la fin de la transition
+          setTimeout(() => {
+              // On récupère p
+              const p = teamWheelSlices[randomSlice];
+              // On l'assigne à l'équipe
+              assignToNextTeam(p);
+              // On retire p du tableau
+              teamWheelSlices.splice(randomSlice,1);
+              // On reconstruit la roue
+              buildWheel(teamWheelSlices);
+          }, 4500);
+      }
+
+      function assignToNextTeam(player) {
+          // Round Robin => on place player dans team = currentTeamIndex + 1
+          const t = (currentTeamIndex % currentTeamsCount) + 1;
+          currentTeamIndex++;
+          player.team = t;
+      }
+
+      // Reconnaissance vocale (inchangé)
       let recognition = null;
       let isVoiceActive = false;
-
-      // Pour éviter de sélectionner plusieurs fois le même nombre en interim
-      let interimMemory = new Set();
-
-      // Définit si on TRAITE les commandes
       let isCommandMode = false;
+      let interimMemory = new Set();
 
       function toggleVoiceRecognition() {
           if (!('webkitSpeechRecognition' in window)) {
               console.error("La reconnaissance vocale n'est pas supportée.");
               return;
           }
-
           const voiceBtn = document.getElementById('voice-btn');
           if (!recognition) {
               recognition = new webkitSpeechRecognition();
@@ -503,15 +630,10 @@
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
-                      // On ne fait PLUS rien de visuel (supprimé l'interimText)
                       if (!result.isFinal) {
-                          // On n'affiche pas
-                          // On vérifie si on est en mode commande pour "detectNumbersOnTheFly"
                           if (isCommandMode) detectNumbersOnTheFly(transcript);
                       } else {
-                          // Phrase finale
                           interimMemory.clear();
-                          // On détecte activation/désactivation
                           if (transcript.includes('activer')) {
                               isCommandMode = true;
                               console.log('Mode commande activé !');
@@ -520,11 +642,9 @@
                               isCommandMode = false;
                               console.log('Mode commande désactivé !');
                           }
-                          // Si on est en mode commande => traite la phrase
                           if (isCommandMode) {
                               handleVoiceResult(transcript);
                           }
-                          // sinon on ignore
                       }
                   }
               };
@@ -534,7 +654,6 @@
                   if (isVoiceActive) recognition.start();
               };
           }
-
           if (!isVoiceActive) {
               recognition.start();
               isVoiceActive = true;
@@ -546,11 +665,11 @@
           }
       }
 
-      function detectNumbersOnTheFly(text) {
-          const digitMatches = text.match(/\d+/g);
-          if (digitMatches) {
-              digitMatches.forEach(numStr => {
-                  const numVal = parseInt(numStr, 10);
+      function detectNumbersOnTheFly(txt) {
+          const digits = txt.match(/\d+/g);
+          if (digits) {
+              digits.forEach(d => {
+                  const numVal = parseInt(d,10);
                   if (!interimMemory.has(numVal)) {
                       interimMemory.add(numVal);
                       toggleWinnerInstant(numVal);
@@ -560,145 +679,105 @@
       }
 
       const spelledNumbers = {
-          'un': 1, 'une': 1,
-          'deux': 2, 'de': 2,
-          'trois': 3, 'quatre': 4,
-          'cinq': 5, 'six': 6,
-          'sept': 7, 'huit': 8,
-          'neuf': 9, 'dix': 10,
-          'devis': 2, 'paires': 2
+          'un':1, 'une':1, 'deux':2, 'de':2, 'trois':3, 'quatre':4,
+          'cinq':5, 'six':6, 'sept':7, 'huit':8, 'neuf':9, 'dix':10,
+          'devis':2, 'paires':2
       };
 
-      function handleVoiceResult(finalString) {
-          console.log('Reco vocale (final):', finalString);
-          const result = finalString;
-
-          // "retour"
-          if (result.includes('retour')) {
-              undoAction();
-              return;
+      function handleVoiceResult(str) {
+          console.log("Reco finale:", str);
+          if (str.includes('retour')) {
+              undoAction(); return;
           }
-
-          // "retire moi tous les numéros" etc.
-          if (
-              result.includes('retire moi tous les numéros') ||
-              result.includes('retire-moi tous les numéros') ||
-              result.includes('retiens-moi tous les numéros') ||
-              result.includes('rupture moi tous les numéros')
-          ) {
+          if (str.includes('retire moi tous les numéros') ||
+              str.includes('retire-moi tous les numéros') ||
+              str.includes('retiens-moi tous les numéros') ||
+              str.includes('rupture moi tous les numéros')) {
               saveState();
               hideWinners();
-              players.forEach(p => p.isWinner = false);
+              players.forEach(p=> p.isWinner=false);
               renderPlayers();
               return;
           }
-
-          // "gagnant"
-          if (result.includes('gagnant')) {
+          if (str.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
           }
-
-          // "les autres perdront X"
-          const perdrontMatch = result.match(/les autres perdront (\d+)/i);
-          if (perdrontMatch) {
+          const pm = str.match(/les autres perdront (\d+)/i);
+          if (pm) {
               saveState();
               hideWinners();
               stopAudioFadeOut();
-              const livesToRemove = parseInt(perdrontMatch[1], 10);
-              players.forEach(p => {
-                  if (!p.isWinner && p.lives > 0) {
-                      p.lives -= livesToRemove;
-                      if (p.lives < 0) p.lives = 0;
-                      showMinusLife(p.id, livesToRemove);
+              const val = parseInt(pm[1],10);
+              players.forEach(p=>{
+                  if(!p.isWinner && p.lives>0){
+                      p.lives-=val; if(p.lives<0)p.lives=0;
+                      showMinusLife(p.id,val);
                   }
-                  p.isWinner = false;
+                  p.isWinner=false;
               });
-              renderPlayers();
-              return;
+              renderPlayers(); return;
           }
-
-          // "les autres perdent X vies"
-          if (result.includes('les autres perdent')) {
+          if (str.includes('les autres perdent')) {
               saveState();
               hideWinners();
               stopAudioFadeOut();
               const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
-              const spelledMatch = result.match(spelledRegex);
-              if (spelledMatch) {
-                  let val = spelledMatch[1];
-                  if (spelledNumbers[val] !== undefined) {
-                      val = spelledNumbers[val];
-                  } else {
-                      val = parseInt(val, 10);
-                  }
-                  players.forEach(p => {
-                      if (!p.isWinner && p.lives > 0) {
-                          p.lives -= val;
-                          if (p.lives < 0) p.lives = 0;
-                          showMinusLife(p.id, val);
+              const m = str.match(spelledRegex);
+              if(m){
+                  let v = m[1];
+                  if(spelledNumbers[v]!==undefined) v=spelledNumbers[v]; else v=parseInt(v,10);
+                  players.forEach(p=>{
+                      if(!p.isWinner && p.lives>0){
+                          p.lives-=v; if(p.lives<0)p.lives=0;
+                          showMinusLife(p.id,v);
                       }
-                      p.isWinner = false;
+                      p.isWinner=false;
                   });
                   renderPlayers();
               }
               return;
           }
-
-          // "les autres paires de vie"/"les autres paires de devis"
-          if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
-              saveState();
-              hideWinners();
-              stopAudioFadeOut();
-              const val = 2;
-              players.forEach(p => {
-                  if (!p.isWinner && p.lives > 0) {
-                      p.lives -= val;
-                      if (p.lives < 0) p.lives = 0;
-                      showMinusLife(p.id, val);
+          if(str.includes('les autres paires de vie')||str.includes('les autres paires de devis')){
+              saveState(); hideWinners(); stopAudioFadeOut();
+              const val=2;
+              players.forEach(p=>{
+                  if(!p.isWinner && p.lives>0){
+                      p.lives-=val; if(p.lives<0)p.lives=0;
+                      showMinusLife(p.id,val);
                   }
-                  p.isWinner = false;
+                  p.isWinner=false;
               });
-              renderPlayers();
+              renderPlayers();return;
+          }
+          if(str.includes('tu peux me transférer')){
+              saveState();hideWinners(); 
+              const am = str.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
+              if(!am)return;
+              let raw=am[1].toLowerCase();
+              let val= spelledNumbers[raw]!==undefined? spelledNumbers[raw]: parseInt(raw,10);
+              const digits=str.match(/\d+/g);
+              if(!digits||digits.length<2)return;
+              const donorId=parseInt(digits[0],10);
+              const recvId=parseInt(digits[1],10);
+              transferLives(donorId,recvId,val);
               return;
           }
-
-          // "tu peux me transférer X vies..."
-          if (result.includes('tu peux me transférer')) {
+          // "gagnant x y z"
+          const matches = str.match(/\d+/g);
+          if(matches){
               saveState();
-              hideWinners();
-              const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
-              if (!amountMatch) return;
-
-              let amountRaw = amountMatch[1].toLowerCase();
-              let amountVal = spelledNumbers[amountRaw] !== undefined ? spelledNumbers[amountRaw] : parseInt(amountRaw, 10);
-
-              const digits = result.match(/\d+/g);
-              if (!digits || digits.length < 2) {
-                  console.warn("Pas assez de nombres pour détecter donneur / receveur");
-                  return;
-              }
-              const donorId = parseInt(digits[0], 10);
-              const receiverId = parseInt(digits[1], 10);
-              transferLives(donorId, receiverId, amountVal);
-              return;
-          }
-
-          // Sinon "gagnant X Y Z"
-          const matches = result.match(/\d+/g);
-          if (matches) {
-              saveState();
-              matches.forEach(num => {
-                  const pid = parseInt(num, 10);
-                  const pl = players.find(x => x.id === pid);
-                  if (pl) pl.isWinner = true;
+              matches.forEach(d=>{
+                  const n=parseInt(d,10);
+                  const pl=players.find(x=>x.id===n);
+                  if(pl) pl.isWinner=true;
               });
               renderPlayers();
               showWinners();
           }
       }
 
-      // Démarrage initial
+      // Au chargement
       renderPlayers();
   </script>
 </body>
