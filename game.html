@@ -5,7 +5,86 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Squid Game - Gestion des Joueurs</title>
   <style>
-      dius: 5px;
+      @font-face {
+          font-family: "GameOfSquids";
+          src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
+      }
+      @font-face {
+          font-family: "PlayerFont";
+          src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
+      }
+
+      body {
+          font-family: "GameOfSquids", sans-serif;
+          background-color: #101010;
+          color: white;
+          text-align: center;
+          margin: 0;
+          padding: 20px;
+      }
+      h1 {
+          font-size: 3rem;
+          margin: 20px 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          color: white;
+      }
+      h1 span {
+          display: inline-block;
+          font-family: "GameOfSquids", sans-serif;
+          font-size: 3rem;
+      }
+      h1 span.shape-circle {
+          color: #ff3e68;
+      }
+      h1 span.shape-triangle {
+          color: #ff3e68;
+      }
+      h1 span.shape-square {
+          color: #ff3e68;
+          transform: scale(1.4);
+          display: inline-block;
+      }
+
+      #players-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 10px;
+      }
+
+      .player-card {
+          width: 80px;
+          height: 120px;
+          border: 2px solid white;
+          border-radius: 5px;
+          background-color: #007575;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-direction: column;
+          cursor: pointer;
+          font-family: "PlayerFont", sans-serif;
+          position: relative;
+      }
+      .player-card.active {
+          border-color: limegreen;
+          background-color: #0a0;
+      }
+      .player-card.no-lives {
+          background-color: #505050 !important;
+          opacity: 0.7;
+      }
+
+      .player-card-number {
+          font-size: 2rem;
+          color: white;
+          background-color: #005050;
+          padding: 5px 10px;
+          border: 2px solid white;
+          border-radius: 5px;
       }
       .player-lives {
           font-size: 1.6rem; 
@@ -398,7 +477,11 @@
       // === 9) Reconnaissance vocale
       let recognition = null;
       let isVoiceActive = false;
+
+      // Pour éviter de sélectionner plusieurs fois le même nombre en interim
       let interimMemory = new Set();
+
+      // Définit si on TRAITE les commandes
       let isCommandMode = false;
 
       function toggleVoiceRecognition() {
@@ -420,10 +503,15 @@
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
+                      // On ne fait PLUS rien de visuel (supprimé l'interimText)
                       if (!result.isFinal) {
+                          // On n'affiche pas
+                          // On vérifie si on est en mode commande pour "detectNumbersOnTheFly"
                           if (isCommandMode) detectNumbersOnTheFly(transcript);
                       } else {
+                          // Phrase finale
                           interimMemory.clear();
+                          // On détecte activation/désactivation
                           if (transcript.includes('activer')) {
                               isCommandMode = true;
                               console.log('Mode commande activé !');
@@ -432,9 +520,11 @@
                               isCommandMode = false;
                               console.log('Mode commande désactivé !');
                           }
+                          // Si on est en mode commande => traite la phrase
                           if (isCommandMode) {
                               handleVoiceResult(transcript);
                           }
+                          // sinon on ignore
                       }
                   }
               };
@@ -483,11 +573,13 @@
           console.log('Reco vocale (final):', finalString);
           const result = finalString;
 
+          // "retour"
           if (result.includes('retour')) {
               undoAction();
               return;
           }
 
+          // "retire moi tous les numéros" etc.
           if (
               result.includes('retire moi tous les numéros') ||
               result.includes('retire-moi tous les numéros') ||
@@ -501,11 +593,13 @@
               return;
           }
 
+          // "gagnant"
           if (result.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
           }
 
+          // "les autres perdront X"
           const perdrontMatch = result.match(/les autres perdront (\d+)/i);
           if (perdrontMatch) {
               saveState();
@@ -524,6 +618,7 @@
               return;
           }
 
+          // "les autres perdent X vies"
           if (result.includes('les autres perdent')) {
               saveState();
               hideWinners();
@@ -550,6 +645,7 @@
               return;
           }
 
+          // "les autres paires de vie"/"les autres paires de devis"
           if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
               saveState();
               hideWinners();
@@ -567,6 +663,7 @@
               return;
           }
 
+          // "tu peux me transférer X vies..."
           if (result.includes('tu peux me transférer')) {
               saveState();
               hideWinners();
@@ -587,6 +684,7 @@
               return;
           }
 
+          // Sinon "gagnant X Y Z"
           const matches = result.match(/\d+/g);
           if (matches) {
               saveState();
