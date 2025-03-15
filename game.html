@@ -585,37 +585,33 @@
     };
     function handleVoiceResult(str) {
         console.log("Reco final:", str);
-        // Traitement des commandes vocales...
+        // Traitement des commandes vocales (cf. votre logique existante)
     }
     // =============== Équipes + Décompte ===============
     function createTeams() {
         const nb = prompt("Combien d'équipes ?", "2");
         if (!nb || isNaN(nb) || nb < 1) return;
-        // Démarrer le compte à rebours avec GIF et voix
+        // Décompte avec overlay, GIF et voix féminine en coréen
         startCountdown(3, () => {
             distributionEquipes(parseInt(nb, 10));
         });
     }
-    // Fonction de décompte avec lecture de voix féminine en coréen
+    // Décompte avec overlay et lecture de voix
     function startCountdown(from, callback) {
         const over = document.getElementById('countdown-overlay');
         const numEl = document.getElementById('countdown-number');
         over.style.display = 'flex';
         let val = from;
         numEl.textContent = val;
-        // Audio pour chaque chiffre (remplacez les URL par les vôtres)
-        const koreanVoice = {
-            3: new Audio("https://example.com/korean_voice_3.mp3"),
-            2: new Audio("https://example.com/korean_voice_2.mp3"),
-            1: new Audio("https://example.com/korean_voice_1.mp3")
-        };
+        // Utilisation du fichier audio fourni pour chaque chiffre
+        const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/ElevenLabs_2025-03-15T14_23_41_SG_ivc_s89_sb82_se28_b_m2.mp3?updatedAt=1742048759828");
+        countdownAudio.volume = 1;
         const timer = setInterval(() => {
             val--;
             if (val > 0) {
                 numEl.textContent = val;
-                if (koreanVoice[val]) {
-                    koreanVoice[val].play().catch(err => console.warn("Audio error:", err));
-                }
+                countdownAudio.currentTime = 0;
+                countdownAudio.play().catch(err => console.warn("Audio error:", err));
             } else {
                 clearInterval(timer);
                 over.style.display = 'none';
@@ -624,7 +620,7 @@
         }, 1000);
     }
     function distributionEquipes(nbEquipes) {
-        // Shuffle
+        // Mélange (shuffle)
         let arr = [...players];
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -637,7 +633,7 @@
             teams[idx].push(p);
             idx = (idx + 1) % nbEquipes;
         });
-        // Affecter le numéro d'équipe à chaque joueur
+        // Affectation du numéro d'équipe
         teams.forEach((teamArr, i) => {
             teamArr.forEach(p => {
                 p.team = i + 1;
@@ -651,14 +647,13 @@
         const tc = document.getElementById('teams-container');
         tc.innerHTML = '';
         tc.style.display = 'flex';
-        // Pour chaque équipe, créer une boîte d'équipe avec les cartes individuelles
+        // Créer une boîte d'équipe pour chaque équipe avec les cartes individuelles
         teams.forEach((teamArr, i) => {
             const box = document.createElement('div');
             box.className = 'team-box';
             const title = document.createElement('h2');
             title.textContent = "Équipe " + (i + 1);
             box.appendChild(title);
-            // Sous-container pour les cartes de l'équipe
             const cardsDiv = document.createElement('div');
             cardsDiv.className = 'team-cards';
             teamArr.forEach(p => {
