@@ -48,6 +48,7 @@
           display: inline-block;
       }
 
+      /* Conteneur principal des "cartes" de joueurs */
       #players-container {
           display: flex;
           flex-wrap: wrap;
@@ -68,6 +69,10 @@
           cursor: pointer;
           font-family: "PlayerFont", sans-serif;
           position: relative;
+          transition: transform 0.2s;
+      }
+      .player-card:hover {
+          transform: scale(1.05);
       }
       .player-card.active {
           border-color: limegreen;
@@ -77,7 +82,6 @@
           background-color: #505050 !important;
           opacity: 0.7;
       }
-
       .player-card-number {
           font-size: 2rem;
           color: white;
@@ -92,9 +96,9 @@
           margin-top: 5px;
       }
 
-      /* Boutons très bas */
+      /* Boutons en bas */
       .buttons-container {
-          margin-top: 400px; /* Ajuste si tu veux descendre encore plus */
+          margin-top: 400px;
       }
       button {
           padding: 10px 20px;
@@ -133,6 +137,13 @@
       #voice-btn:hover {
           background-color: #303f9f;
       }
+      #teams-btn {
+          background-color: #ffcc00;
+          color: #000;
+      }
+      #teams-btn:hover {
+          background-color: #e6b800;
+      }
       #lives-input {
           padding: 10px;
           font-size: 1.2rem;
@@ -143,7 +154,7 @@
           color: #fff;
       }
 
-      /* Animation du coeur */
+      /* Animation du coeur / la vie en moins */
       .heart-animation {
           position: absolute;
           font-size: 2rem;
@@ -162,9 +173,9 @@
           pointer-events: none;
       }
 
-      /* Overlay pour l'affichage en grand des gagnants */
+      /* Overlay pour affichage des gagnants */
       #winners-overlay {
-          display: none; /* Par défaut masqué */
+          display: none;
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
           background-color: rgba(0, 0, 0, 0.9);
@@ -204,7 +215,50 @@
       }
       @keyframes fadein {
           from { transform: scale(0.8); opacity: 0; }
-          to   { transform: scale(1); opacity: 1; }
+          to   { transform: scale(1);   opacity: 1; }
+      }
+
+      /* Conteneur pour l'affichage final des équipes */
+      #teams-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 40px;
+          margin-top: 50px;
+      }
+      .team-box {
+          border: 2px dashed #ccc;
+          padding: 20px;
+          min-width: 120px;
+          min-height: 200px;
+          border-radius: 10px;
+      }
+      .team-box h2 {
+          font-family: "GameOfSquids", sans-serif;
+          font-size: 1.5rem;
+          margin-bottom: 10px;
+      }
+
+      /* Animation "carte => boule 3D" */
+      .transform-to-ball {
+          position: absolute; 
+          width: 60px; 
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(145deg, #008080, #005050);
+          box-shadow: 0 0 12px #00cccc;
+          transform-style: preserve-3d;
+          animation: spin3d 2s linear infinite;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-family: "PlayerFont", sans-serif;
+          font-size: 0.9rem;
+      }
+      @keyframes spin3d {
+          from { transform: rotateY(0deg); }
+          to   { transform: rotateY(360deg); }
       }
   </style>
 </head>
@@ -218,20 +272,25 @@
   </h1>
   <p>À qui le tour ?</p>
 
-  <!-- Overlay caché pour l'affichage en grand des gagnants -->
+  <!-- Overlay gagnants -->
   <div id="winners-overlay"></div>
 
-  <!-- On a retiré le <div id="interimText"> -->
-
+  <!-- Conteneur principal des joueurs -->
   <div id="players-container"></div>
 
+  <!-- Boutons -->
   <div class="buttons-container">
       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
       <button id="undo-btn" onclick="undoAction()">Retour</button>
       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+      <!-- Nouveau bouton : Créer les équipes -->
+      <button id="teams-btn" onclick="createTeams()">Créer des équipes</button>
   </div>
+
+  <!-- Conteneur pour l'affichage final des équipes -->
+  <div id="teams-container"></div>
 
   <script>
       // === 0) Récupération du nombre de joueurs via l'URL ===
@@ -242,7 +301,7 @@
       let players = Array.from({ length: numPlayers }, (_, i) => ({
           id: i + 1,
           lives: 6,
-          isWinner: false,
+          isWinner: false
       }));
       let lastPlayers = null; // stocke l'état précédent
 
@@ -304,7 +363,7 @@
           }, 200);
       }
 
-      // === 3) Rendu players
+      // === 3) Rendu players (cartes)
       function renderPlayers() {
           const container = document.getElementById('players-container');
           container.innerHTML = '';
@@ -330,6 +389,7 @@
               container.appendChild(playerCard);
           });
       }
+
       function toggleWinnerManually(playerId) {
           saveState();
           const player = players.find(p => p.id === playerId);
@@ -477,11 +537,7 @@
       // === 9) Reconnaissance vocale
       let recognition = null;
       let isVoiceActive = false;
-
-      // Pour éviter de sélectionner plusieurs fois le même nombre en interim
       let interimMemory = new Set();
-
-      // Définit si on TRAITE les commandes
       let isCommandMode = false;
 
       function toggleVoiceRecognition() {
@@ -503,15 +559,10 @@
                       const result = event.results[i];
                       const transcript = result[0].transcript.toLowerCase().trim();
 
-                      // On ne fait PLUS rien de visuel (supprimé l'interimText)
                       if (!result.isFinal) {
-                          // On n'affiche pas
-                          // On vérifie si on est en mode commande pour "detectNumbersOnTheFly"
                           if (isCommandMode) detectNumbersOnTheFly(transcript);
                       } else {
-                          // Phrase finale
                           interimMemory.clear();
-                          // On détecte activation/désactivation
                           if (transcript.includes('activer')) {
                               isCommandMode = true;
                               console.log('Mode commande activé !');
@@ -520,11 +571,9 @@
                               isCommandMode = false;
                               console.log('Mode commande désactivé !');
                           }
-                          // Si on est en mode commande => traite la phrase
                           if (isCommandMode) {
                               handleVoiceResult(transcript);
                           }
-                          // sinon on ignore
                       }
                   }
               };
@@ -568,7 +617,6 @@
           'neuf': 9, 'dix': 10,
           'devis': 2, 'paires': 2
       };
-
       function handleVoiceResult(finalString) {
           console.log('Reco vocale (final):', finalString);
           const result = finalString;
@@ -579,7 +627,6 @@
               return;
           }
 
-          // "retire moi tous les numéros" etc.
           if (
               result.includes('retire moi tous les numéros') ||
               result.includes('retire-moi tous les numéros') ||
@@ -593,13 +640,11 @@
               return;
           }
 
-          // "gagnant"
           if (result.includes('gagnant')) {
               stopAudioFadeOut();
               playAudioFadeIn();
           }
 
-          // "les autres perdront X"
           const perdrontMatch = result.match(/les autres perdront (\d+)/i);
           if (perdrontMatch) {
               saveState();
@@ -618,7 +663,6 @@
               return;
           }
 
-          // "les autres perdent X vies"
           if (result.includes('les autres perdent')) {
               saveState();
               hideWinners();
@@ -645,7 +689,6 @@
               return;
           }
 
-          // "les autres paires de vie"/"les autres paires de devis"
           if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
               saveState();
               hideWinners();
@@ -663,7 +706,6 @@
               return;
           }
 
-          // "tu peux me transférer X vies..."
           if (result.includes('tu peux me transférer')) {
               saveState();
               hideWinners();
@@ -698,8 +740,84 @@
           }
       }
 
+      // === Nouveau : Création d'équipes + animation cartes => boules 3D
+      function createTeams() {
+          const nbTeams = prompt("Combien d'équipes ?", "2");
+          if (!nbTeams || isNaN(nbTeams) || nbTeams <= 0) return;
+
+          // 1) Mélanger (shuffle) la liste de players
+          let arr = [...players];
+          for (let i = arr.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+
+          // 2) Répartir round-robin
+          let teams = Array.from({ length: nbTeams }, () => []);
+          let idx = 0;
+          arr.forEach(p => {
+              teams[idx].push(p);
+              idx = (idx + 1) % nbTeams;
+          });
+
+          // 3) Animer la transformation des player-cards en "boules"
+          //   On va récupérer chaque .player-card et lui assigner
+          //   une animation + la position "absolute" => .transform-to-ball
+          const container = document.getElementById('players-container');
+          const cards = container.querySelectorAll('.player-card');
+          cards.forEach((card, i) => {
+              // On positionne la carte en absolu (pour l'anim)
+              const rect = card.getBoundingClientRect();
+              card.style.position = 'absolute';
+              card.style.left = rect.left + 'px';
+              card.style.top = rect.top + 'px';
+              card.style.width = rect.width + 'px';
+              card.style.height = rect.height + 'px';
+          });
+
+          // Petit timeout pour forcer le reflow
+          setTimeout(() => {
+              cards.forEach(card => {
+                  // On remplace la classe par .transform-to-ball
+                  card.classList.remove('player-card');
+                  card.classList.add('transform-to-ball');
+                  // On enlève le texte "vies" interne
+                  card.innerHTML = card.querySelector('.player-card-number').textContent;
+              });
+          }, 100);
+
+          // 4) Après l'animation (2s), on les place dans #teams-container
+          setTimeout(() => {
+              container.innerHTML = ""; // on vide l'ancien conteneur
+              document.getElementById('teams-container').innerHTML = ""; // reset
+              // On crée la structure d'affichage
+              teams.forEach((teamArr, tindex) => {
+                  const box = document.createElement('div');
+                  box.className = 'team-box';
+                  const title = document.createElement('h2');
+                  title.textContent = `Équipe ${tindex + 1}`;
+                  box.appendChild(title);
+
+                  teamArr.forEach(player => {
+                      // On crée la boule 3D finale
+                      const ball = document.createElement('div');
+                      ball.className = 'transform-to-ball';
+                      // On arrête l'animation 3D
+                      ball.style.animation = 'none';
+                      ball.style.width = '50px';
+                      ball.style.height = '50px';
+                      ball.textContent = player.id.toString().padStart(3,'0');
+                      box.appendChild(ball);
+                  });
+
+                  document.getElementById('teams-container').appendChild(box);
+              });
+          }, 2100);
+      }
+
       // Démarrage initial
       renderPlayers();
   </script>
 </body>
 </html>
+
