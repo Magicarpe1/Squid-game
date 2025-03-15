@@ -597,21 +597,21 @@
         });
     }
     // Décompte avec overlay et lecture de voix
-    function startCountdown(from, callback) {
+    function startCountdown(from, callback) {   
         const over = document.getElementById('countdown-overlay');
         const numEl = document.getElementById('countdown-number');
         over.style.display = 'flex';
         let val = from;
         numEl.textContent = val;
-        // Utilisation du fichier audio fourni pour chaque chiffre
+        // Création et lancement du fichier audio une seule fois
         const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Kids%20x%2071%20Digits%20_%20Red%20Light,%20Green%20Light%20(Official%20Audio).mp3?updatedAt=1742050169733");
         countdownAudio.volume = 1;
+        countdownAudio.play().catch(err => console.warn("Audio error:", err));
+        // Démarrage du décompte (mise à jour de l'affichage uniquement)
         const timer = setInterval(() => {
             val--;
             if (val > 0) {
                 numEl.textContent = val;
-                countdownAudio.currentTime = 0;
-                countdownAudio.play().catch(err => console.warn("Audio error:", err));
             } else {
                 clearInterval(timer);
                 over.style.display = 'none';
@@ -619,6 +619,7 @@
             }
         }, 1000);
     }
+
     function distributionEquipes(nbEquipes) {
         // Mélange (shuffle)
         let arr = [...players];
