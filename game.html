@@ -49,11 +49,39 @@
       display: inline-block;
     }
 
-    #players-container {
+    /* Conteneur global */
+    #players-global {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    /* Conteneur de toutes les teams (ou sans team) */
+    .teams-container {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
+      gap: 20px;
+    }
+
+    .team-block {
+      border: 2px solid #fff;
+      border-radius: 5px;
+      padding: 10px;
+      min-width: 180px;
+    }
+    .team-block h2 {
+      margin: 5px 0 10px;
+      font-size: 1.4rem;
+      color: #ffdf00;
+    }
+
+    .player-grid {
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
+      justify-content: center;
     }
 
     .player-card {
@@ -61,7 +89,7 @@
       height: 120px;
       border: 2px solid white;
       border-radius: 5px;
-      background-color: #007575;
+      background-color: #007575; /* Couleur identique pour cartes et boules */
       display: flex;
       justify-content: center;
       align-items: center;
@@ -77,12 +105,6 @@
     .player-card.no-lives {
       background-color: #505050 !important;
       opacity: 0.7;
-    }
-    /* si le joueur a une team => on l'affiche en bas */
-    .player-team {
-      font-size: 1.1rem;
-      color: yellow;
-      margin-top: 3px;
     }
 
     .player-card-number {
@@ -100,7 +122,7 @@
     }
 
     .buttons-container {
-      margin-top: 400px;
+      margin-top: 20px;
     }
     button {
       padding: 10px 20px;
@@ -108,7 +130,7 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
-      margin: 20px 10px;
+      margin: 0 10px;
       font-family: "GameOfSquids", sans-serif;
     }
     #submit-btn {
@@ -159,12 +181,11 @@
       font-size: 1.2rem;
       border-radius: 5px;
       border: 1px solid #fff;
-      margin: 20px;
+      margin: 0 20px;
       background-color: #202020;
       color: #fff;
     }
 
-    /* Anim minus life */
     .minus-life {
       position: absolute;
       color: red;
@@ -216,14 +237,8 @@
       margin-top: 5px;
     }
     @keyframes fadein {
-      from {
-        transform: scale(0.8);
-        opacity: 0;
-      }
-      to {
-        transform: scale(1);
-        opacity: 1;
-      }
+      from { transform: scale(0.8); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
     }
 
     /* Overlay loterie */
@@ -237,7 +252,6 @@
       align-items: center;
       overflow: hidden;
     }
-
     .lottery-container {
       width: 400px;
       height: 400px;
@@ -245,35 +259,21 @@
       border-radius: 50%;
       position: relative;
       overflow: hidden;
-      /* On va animer un unique tour complet en 5s */
       background: url("https://ik.imagekit.io/lakolo/lottery_wheel.png") no-repeat center center;
       background-size: cover;
     }
-    .lottery-spin {
-      animation: single-spin 5s linear forwards; /* un seul spin 0->360 */
-    }
-
-    @keyframes single-spin {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
     .lottery-ball {
       position: absolute;
-      width: 50px;
-      height: 50px;
-      background-color: #00aa00; /* vert pour les joueurs */
+      width: 40px;
+      height: 40px;
+      background-color: #007575; /* même vert que les cartes */
       border-radius: 50%;
       color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       font-family: "PlayerFont", sans-serif;
-      font-size: 1.2rem;
+      font-size: 1.0rem;
       user-select: none;
       pointer-events: none;
     }
@@ -291,23 +291,23 @@
 
   <!-- Overlay caché pour l'affichage en grand des gagnants -->
   <div id="winners-overlay"></div>
-
   <!-- Overlay pour l'animation de tirage au sort -->
   <div id="lottery-overlay"></div>
 
-  <div id="players-container"></div>
+  <!-- Conteneur global -->
+  <div id="players-global">
+    <!-- Le conteneur principal pour afficher les teams ou la grille unique -->
+    <div class="teams-container" id="teams-container"></div>
 
-  <div class="buttons-container">
-    <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
-    <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
-    <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
-    <button id="undo-btn" onclick="undoAction()">Retour</button>
-    <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
-
-    <!-- Bouton pour créer les équipes -->
-    <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
-    <!-- Bouton pour casser les équipes -->
-    <button id="break-teams-btn" onclick="breakTeams()">Casser les équipes</button>
+    <div class="buttons-container">
+      <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
+      <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
+      <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
+      <button id="undo-btn" onclick="undoAction()">Retour</button>
+      <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+      <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
+      <button id="break-teams-btn" onclick="breakTeams()">Casser les équipes</button>
+    </div>
   </div>
 
   <script>
@@ -392,41 +392,108 @@
       }, 200);
     }
 
-    // === 3) Rendu players
+    // === 3) Rendu players (avec regroupement par équipe ou non)
     function renderPlayers() {
-      const container = document.getElementById("players-container");
-      container.innerHTML = "";
-      players.forEach((player) => {
-        let cardClass = "player-card";
-        if (player.isWinner) cardClass += " active";
-        if (player.lives <= 0) cardClass += " no-lives";
+      const teamsContainer = document.getElementById("teams-container");
+      teamsContainer.innerHTML = "";
 
-        const playerCard = document.createElement("div");
-        playerCard.className = cardClass;
-        playerCard.onclick = () => toggleWinnerManually(player.id);
+      // Cherche s'il y a au moins une team
+      const hasTeam = players.some((p) => p.team !== null);
+      if (!hasTeam) {
+        // Tous en un bloc "sans équipe"
+        const block = document.createElement("div");
+        block.className = "team-block";
 
-        const playerNumber = document.createElement("div");
-        playerNumber.className = "player-card-number";
-        playerNumber.textContent = player.id.toString().padStart(3, "0");
+        const h2 = document.createElement("h2");
+        h2.textContent = "Sans équipe";
+        block.appendChild(h2);
 
-        const playerLives = document.createElement("div");
-        playerLives.className = "player-lives";
-        playerLives.textContent = `Vies: ${player.lives}`;
+        const grid = document.createElement("div");
+        grid.className = "player-grid";
 
-        playerCard.appendChild(playerNumber);
-        playerCard.appendChild(playerLives);
+        players.forEach((p) => {
+          const card = createPlayerCard(p);
+          grid.appendChild(card);
+        });
 
-        // Si le joueur a une équipe, on l'affiche
-        if (player.team != null) {
-          const teamDiv = document.createElement("div");
-          teamDiv.className = "player-team";
-          teamDiv.textContent = `Team ${player.team}`;
-          playerCard.appendChild(teamDiv);
+        block.appendChild(grid);
+        teamsContainer.appendChild(block);
+      } else {
+        // On regroupe par team
+        // d'abord on identifie les teams distinctes
+        const distinctTeams = [
+          ...new Set(players.filter((p) => p.team).map((p) => p.team)),
+        ].sort((a, b) => a - b);
+
+        distinctTeams.forEach((teamNum) => {
+          const block = document.createElement("div");
+          block.className = "team-block";
+
+          const h2 = document.createElement("h2");
+          h2.textContent = `Équipe ${teamNum}`;
+          block.appendChild(h2);
+
+          const grid = document.createElement("div");
+          grid.className = "player-grid";
+
+          // On affiche les joueurs de cette team
+          players
+            .filter((p) => p.team === teamNum)
+            .forEach((p) => {
+              const card = createPlayerCard(p);
+              grid.appendChild(card);
+            });
+
+          block.appendChild(grid);
+          teamsContainer.appendChild(block);
+        });
+
+        // On affiche éventuellement ceux qui ont team=null
+        const noTeamPlayers = players.filter((p) => p.team === null);
+        if (noTeamPlayers.length > 0) {
+          const block = document.createElement("div");
+          block.className = "team-block";
+
+          const h2 = document.createElement("h2");
+          h2.textContent = `Sans équipe`;
+          block.appendChild(h2);
+
+          const grid = document.createElement("div");
+          grid.className = "player-grid";
+          noTeamPlayers.forEach((p) => {
+            const card = createPlayerCard(p);
+            grid.appendChild(card);
+          });
+
+          block.appendChild(grid);
+          teamsContainer.appendChild(block);
         }
-
-        container.appendChild(playerCard);
-      });
+      }
     }
+
+    function createPlayerCard(player) {
+      let cardClass = "player-card";
+      if (player.isWinner) cardClass += " active";
+      if (player.lives <= 0) cardClass += " no-lives";
+
+      const playerCard = document.createElement("div");
+      playerCard.className = cardClass;
+      playerCard.onclick = () => toggleWinnerManually(player.id);
+
+      const playerNumber = document.createElement("div");
+      playerNumber.className = "player-card-number";
+      playerNumber.textContent = player.id.toString().padStart(3, "0");
+
+      const playerLives = document.createElement("div");
+      playerLives.className = "player-lives";
+      playerLives.textContent = `Vies: ${player.lives}`;
+
+      playerCard.appendChild(playerNumber);
+      playerCard.appendChild(playerLives);
+
+      return playerCard;
+    }
+
     function toggleWinnerManually(playerId) {
       saveState();
       const player = players.find((p) => p.id === playerId);
@@ -493,16 +560,6 @@
         return;
       }
 
-      const children = document.getElementById("players-container").children;
-      for (let c of children) {
-        const num = c.querySelector(".player-card-number").textContent;
-        const id = parseInt(num, 10);
-        const pl = players.find((x) => x.id === id);
-        if (pl && pl.isWinner) {
-          c.style.display = "none";
-        }
-      }
-
       winners.forEach((w) => {
         const clone = document.createElement("div");
         clone.className = "winner-clone";
@@ -532,28 +589,28 @@
       const overlay = document.getElementById("winners-overlay");
       overlay.innerHTML = "";
       overlay.style.display = "none";
-
-      const children = document.getElementById("players-container").children;
-      for (let c of children) {
-        c.style.display = "";
-      }
     }
 
     // === 8) showMinusLife
     function showMinusLife(playerId, lostValue) {
-      const container = document.getElementById("players-container").children;
-      let card = null;
-      for (let c of container) {
-        const numberDiv = c.querySelector(".player-card-number");
-        const cardId = parseInt(numberDiv.textContent);
-        if (cardId === playerId) {
-          card = c;
-          break;
+      // On cherche la carte
+      const card = document.querySelector(
+        `.player-card-number:contains(${String(
+          playerId.toString().padStart(3, "0")
+        )})`
+      );
+      // Sauf que :contains() n'existe pas nativement en JS, on fait un fallback
+      // => on va brute force
+      let el = null;
+      const allNumbers = document.querySelectorAll(".player-card-number");
+      allNumbers.forEach((n) => {
+        if (n.textContent === playerId.toString().padStart(3, "0")) {
+          el = n;
         }
-      }
-      if (!card) return;
+      });
+      if (!el) return;
 
-      const rect = card.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       const minusEl = document.createElement("div");
       minusEl.className = "minus-life";
       minusEl.textContent = `-${lostValue}`;
@@ -798,13 +855,12 @@
     // ==============================
     // =========== ÉQUIPES ==========
     // ==============================
-
     function createTeams() {
       const nbEquipes = prompt("Combien d'équipes ?", "5");
       if (!nbEquipes || isNaN(nbEquipes) || nbEquipes <= 0) {
         return;
       }
-      saveState(); // on sauvegarde avant
+      saveState();
       const numTeams = parseInt(nbEquipes, 10);
 
       // 1) Mélanger players
@@ -837,45 +893,92 @@
         });
       });
 
-      // 3) Lancer l'animation (max 5s)
+      // 3) Animation "façon euromillions" : boules se déplacent aléatoirement 5s
       showLotteryAnimation(shuffled, teams);
     }
+
+    // Variables pour l'animation "euromillions"
+    let animationInterval = null;
+    let animationStartTime = null;
+    let ballsState = [];
 
     function showLotteryAnimation(shuffled, teams) {
       const overlay = document.getElementById("lottery-overlay");
       overlay.innerHTML = "";
       overlay.style.display = "flex";
 
-      // conteneur (avec image de loterie en background)
       const container = document.createElement("div");
-      container.className = "lottery-container lottery-spin"; 
-      // .lottery-spin => rotation unique 5s
+      container.className = "lottery-container";
       overlay.appendChild(container);
 
-      // Création des boules (vertes)
-      shuffled.forEach((p) => {
-        const ball = document.createElement("div");
-        ball.className = "lottery-ball";
-        ball.textContent = p.id.toString().padStart(3, "0");
-        // position random
-        const angle = Math.random() * 2 * Math.PI;
-        const radius = 100 + Math.random() * 80;
-        const x = 200 + radius * Math.cos(angle) - 25;
-        const y = 200 + radius * Math.sin(angle) - 25;
-        ball.style.left = x + "px";
-        ball.style.top = y + "px";
-        container.appendChild(ball);
+      // Créer les boules avec positions & vitesses random
+      ballsState = shuffled.map((p) => {
+        let angle = Math.random() * 2 * Math.PI;
+        let radius = 120; // zone de mouvement ~
+        let x = 200 + radius * Math.cos(angle) - 20; // -20 => centre la boule
+        let y = 200 + radius * Math.sin(angle) - 20;
+
+        // vitesses random (entre -2 et +2)
+        let vx = (Math.random() * 4) - 2;
+        let vy = (Math.random() * 4) - 2;
+
+        const ballDiv = document.createElement("div");
+        ballDiv.className = "lottery-ball";
+        ballDiv.textContent = p.id.toString().padStart(3, "0");
+        ballDiv.style.left = x + "px";
+        ballDiv.style.top = y + "px";
+        container.appendChild(ballDiv);
+
+        return { p, x, y, vx, vy, el: ballDiv };
       });
 
-      // Après 5s => on arrête
+      // On lance l'animation
+      animationStartTime = performance.now();
+      animationInterval = requestAnimationFrame(moveBalls);
+
+      // après 5s => on arrête
       setTimeout(() => {
-        // on enlève l'animation
-        container.classList.remove("lottery-spin");
-        // on supprime les boules
+        cancelAnimationFrame(animationInterval);
+        // On supprime tout
         container.innerHTML = "";
-        // On montre le résultat
         showTeamsResult(teams);
       }, 5000);
+    }
+
+    function moveBalls(timestamp) {
+      // dt => temps depuis la dernière frame
+      animationInterval = requestAnimationFrame(moveBalls);
+
+      ballsState.forEach((b) => {
+        // maj positions
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // On fait un bounce simple dans la bounding box (cercle ~)
+        // centre (200,200), rayon = 180
+        let centerX = 200, centerY = 200;
+        let dx = b.x + 20 - centerX; // +20 => centre de la boule
+        let dy = b.y + 20 - centerY;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        const maxRadius = 180; // approximatif
+        if (dist + 20 > maxRadius) {
+          // on rebondit => on inverse vx,vy
+          // direction entre le centre et la boule
+          // vect normal => dx, dy
+          let nx = dx / dist; 
+          let ny = dy / dist;
+          // projection => on inverse
+          let dot = b.vx * nx + b.vy * ny; 
+          // rebond
+          b.vx -= 2 * dot * nx;
+          b.vy -= 2 * dot * ny;
+        }
+
+        // Update style
+        b.el.style.left = b.x + "px";
+        b.el.style.top = b.y + "px";
+      });
     }
 
     function showTeamsResult(teams) {
@@ -901,9 +1004,7 @@
 
         teamArr.forEach((p) => {
           const pLine = document.createElement("div");
-          pLine.textContent = `Joueur ${p.id
-            .toString()
-            .padStart(3, "0")} (vies=${p.lives})`;
+          pLine.textContent = `Joueur ${p.id.toString().padStart(3, "0")} (vies=${p.lives})`;
           teamBox.appendChild(pLine);
         });
 
@@ -914,13 +1015,12 @@
       closeBtn.textContent = "Fermer";
       closeBtn.onclick = () => {
         overlay.style.display = "none";
-        // on re-render => cartes ont leur team
-        renderPlayers();
+        renderPlayers(); // on met à jour l'affichage final
       };
       overlay.appendChild(closeBtn);
     }
 
-    // Démarrage initial
+    // Start
     renderPlayers();
   </script>
 </body>
