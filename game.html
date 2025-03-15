@@ -728,9 +728,101 @@
                showWinners();
            }
        }
- 
-       // Démarre
-       // Démarrage initial
+        function createTeams(){
+    const nb= prompt("Combien d'équipes ?", "2");
+    if(!nb||isNaN(nb)||nb<1)return;
+
+    // 1) Décompte
+    startCountdown(3, ()=>{
+      // 2) distribution
+      distributionEquipes(parseInt(nb,10));
+    });
+  }
+
+  function startCountdown(from, callback){
+    const over= document.getElementById('countdown-overlay');
+    const numEl= document.getElementById('countdown-number');
+    over.style.display='flex';
+
+    let val= from;
+    numEl.textContent= val;
+    const timer= setInterval(()=>{
+      val--;
+      if(val<=0){
+        clearInterval(timer);
+        over.style.display='none';
+        callback();
+      } else {
+        numEl.textContent= val;
+      }
+    }, 1000);
+  }
+
+  function distributionEquipes(nbEquipes){
+    // Shuffle
+    let arr=[...players];
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]]= [arr[j], arr[i]];
+    }
+    // Round robin
+    let teams= Array.from({length:nbEquipes},()=>[]);
+    let idx=0;
+    arr.forEach(p=>{
+      teams[idx].push(p);
+      idx=(idx+1)%nbEquipes;
+    });
+
+    // 1) On supprime #players-container ou le masque
+    const pc= document.getElementById('players-container');
+    pc.innerHTML='';
+    pc.style.display='none';
+
+    // 2) On affiche #teams-container
+    const tc= document.getElementById('teams-container');
+    tc.innerHTML='';
+    tc.style.display='flex';
+
+    // 3) Pour chaque équipe, on crée un .team-box
+    teams.forEach((teamArr, i)=>{
+      const box= document.createElement('div');
+      box.className='team-box';
+
+      const title= document.createElement('h2');
+      title.textContent= "Équipe "+(i+1);
+      box.appendChild(title);
+
+      // un sous-container .team-cards
+      const cardsDiv= document.createElement('div');
+      cardsDiv.className='team-cards';
+
+      // On recrée pour chaque joueur une "player-card" identique
+      teamArr.forEach(p=>{
+        const card= document.createElement('div');
+        card.className='player-card';
+
+        // si p.lives<=0 => .no-lives
+        if(p.lives<=0) card.classList.add('no-lives');
+        // pas obligatoire, si p.isWinner => card.classList.add('active') ?
+
+        // structure interne
+        const num= document.createElement('div');
+        num.className='player-card-number';
+        num.textContent= p.id.toString().padStart(3,'0');
+
+        const lv= document.createElement('div');
+        lv.className='player-lives';
+        lv.textContent= `Vies: ${p.lives}`;
+
+        card.appendChild(num);
+        card.appendChild(lv);
+        cardsDiv.appendChild(card);
+      });
+
+      box.appendChild(cardsDiv);
+      tc.appendChild(box);
+    });
+  }
        renderPlayers();
    </script>
  </body>
