@@ -1,310 +1,737 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Squid Game - Gestion des Joueurs</title>
-  <style>
-      @font-face {
-          font-family: "GameOfSquids";
-          src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
-      }
-      @font-face {
-          font-family: "PlayerFont";
-          src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
-      }
-
-      body {
-          font-family: "GameOfSquids", sans-serif;
-          background-color: #101010;
-          color: white;
-          text-align: center;
-          margin: 0;
-          padding: 20px;
-      }
-      h1 {
-          font-size: 3rem;
-          margin: 20px 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 10px;
-          color: white;
-      }
-      h1 span {
-          display: inline-block;
-          font-family: "GameOfSquids", sans-serif;
-          font-size: 3rem;
-      }
-      h1 span.shape-circle {
-          color: #ff3e68;
-      }
-      h1 span.shape-triangle {
-          color: #ff3e68;
-      }
-      h1 span.shape-square {
-          color: #ff3e68;
-          transform: scale(1.4);
-          display: inline-block;
-      }
-
-      /* Container principal des joueurs */
-      #players-container {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 10px;
-      }
-      .player-card {
-          width: 80px;
-          height: 120px;
-          border: 2px solid white;
-          border-radius: 5px;
-          background-color: #007575;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
-          cursor: pointer;
-          font-family: "PlayerFont", sans-serif;
-          position: relative;
-      }
-      .player-card.active {
-          border-color: limegreen;
-          background-color: #0a0;
-      }
-      .player-card.no-lives {
-          background-color: #505050 !important;
-          opacity: 0.7;
-      }
-
-      .player-card-number {
-          font-size: 2rem;
-          color: white;
-          background-color: #005050;
-          padding: 5px 10px;
-          border: 2px solid white;
-          border-radius: 5px;
-      }
-      .player-lives {
-          font-size: 1.6rem; 
-          color: white;
-          margin-top: 5px;
-      }
-
-      /* Boutons en bas */
-      .buttons-container {
-          margin-top: 400px;
-      }
-      button {
-          padding: 10px 20px;
-          font-size: 1.2rem;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          margin: 20px 10px;
-          font-family: "GameOfSquids", sans-serif;
-      }
-      #submit-btn {
-          background-color: #ff3e68;
-          color: white;
-      }
-      #submit-btn:hover {
-          background-color: #c32d4e;
-      }
-      #reset-btn {
-          background-color: #32cd32;
-          color: white;
-      }
-      #reset-btn:hover {
-          background-color: #228b22;
-      }
-      #undo-btn {
-          background-color: #888;
-          color: white;
-      }
-      #undo-btn:hover {
-          background-color: #555;
-      }
-      #voice-btn {
-          background-color: #3f51b5;
-          color: white;
-      }
-      #voice-btn:hover {
-          background-color: #303f9f;
-      }
-      #teams-btn {
-          background-color: #ffcc00;
-          color: #000;
-      }
-      #teams-btn:hover {
-          background-color: #e6b800;
-      }
-      #lives-input {
-          padding: 10px;
-          font-size: 1.2rem;
-          border-radius: 5px;
-          border: 1px solid #fff;
-          margin: 20px;
-          background-color: #202020;
-          color: #fff;
-      }
-
-      /* Animation du coeur */
-      .heart-animation {
-          position: absolute;
-          font-size: 2rem;
-          color: red;
-          z-index: 9999;
-          pointer-events: none;
-          opacity: 1;
-      }
-      .minus-life {
-          position: absolute;
-          color: red;
-          font-size: 1.5rem;
-          font-weight: bold;
-          opacity: 1;
-          transform: translate(-50%, 0);
-          pointer-events: none;
-      }
-
-      /* Overlay pour l'affichage en grand des gagnants */
-      #winners-overlay {
-          display: none;
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background-color: rgba(0,0,0,0.9);
-          z-index: 99999;
-          justify-content: center;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 20px;
-          padding: 20px;
-      }
-      .winner-clone {
-          width: 140px; 
-          height: 200px;
-          margin: 10px;
-          background-color: #007575;
-          border: 3px solid #fff;
-          border-radius: 5px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          animation: fadein 0.3s ease;
-      }
-      .winner-clone .clone-number {
-          font-size: 3rem;
-          background-color: #005050;
-          color: #fff;
-          border: 2px solid #fff;
-          border-radius: 5px;
-          padding: 5px 10px;
-          margin: 5px;
-      }
-      .winner-clone .clone-lives {
-          font-size: 1.5rem;
-          color: #fff;
-          margin-top: 5px;
-      }
-      @keyframes fadein {
-          from { transform: scale(0.8); opacity: 0; }
-          to   { transform: scale(1); opacity: 1; }
-      }
-
-      /* Overlay pour le décompte */
-      #countdown-overlay {
-          display: none;
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background-color: rgba(0,0,0,0.8);
-          z-index: 999999;
-          justify-content: center;
-          align-items: center;
-      }
-      #countdown-number {
-          font-size: 8rem;
-          color: #ff3e68;
-          font-family: "GameOfSquids", sans-serif;
-      }
-  </style>
-</head>
-<body>
-  <h1>
-      <span>SQUID</span>
-      <span class="shape-circle">O</span>
-      <span class="shape-triangle">Δ</span>
-      <span class="shape-square">■</span>
-      <span>GAME</span>
-  </h1>
-  <p>À qui le tour ?</p>
-
-  <!-- Overlay pour les gagnants -->
-  <div id="winners-overlay"></div>
-
-  <!-- Overlay pour le décompte -->
-  <div id="countdown-overlay">
-      <div id="countdown-number">3</div>
-  </div>
-
-  <!-- Container principal (joueurs) -->
-  <div id="players-container"></div>
-
-  <!-- Container des équipes (sera affiché après répartition) -->
-  <div id="teams-container" style="display:none;"></div>
-
-  <div class="buttons-container">
-      <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
-      <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
-      <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
-      <button id="undo-btn" onclick="undoAction()">Retour</button>
-      <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
-      <!-- Bouton pour créer les équipes -->
-      <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
-  </div>
-
-  <script>
-      // === 0) Récupération du nombre de joueurs via l'URL ===
-      const urlParams = new URLSearchParams(window.location.search);
-      const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
-
-      // === 1) Initialisation des joueurs ===
-      let players = Array.from({ length: numPlayers }, (_, i) => ({
-          id: i + 1,
-          lives: 6,
-          isWinner: false,
-      }));
-      let lastPlayers = null;
-
-      function saveState() {
-          lastPlayers = JSON.parse(JSON.stringify(players));
-      }
-      function undoAction() {
-          if (!lastPlayers) {
-              console.warn("Aucune action à annuler");
-              return;
-          }
-          players = JSON.parse(JSON.stringify(lastPlayers));
-          hideWinners();
-          renderPlayers();
-      }
-
-      // === 1b) Transfert de vies ===
-      function transferLives(donorId, receiverId, amount) {
-          const donor = players.find(p => p.id === donorId);
-          const receiver = players.find(p => p.id === receiverId);
-          if (!donor || !receiver) return;
-          if (donor.lives < amount) amount = donor.lives;
-          donor.lives -= amount;
-          receiver.lives += amount;
-          renderPlayers();
-      }
-
-      // === 2) Audio fade in/out ===
-      const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-      audio.volume = 1.0;
-      let fadeInterval = null;
-      function playAudioFadeIn() {
-          if (fadeInter
+ <html lang="fr">
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+   <title>Squid Game - Gestion des Joueurs</title>
+   <style>
+       @font-face {
+           font-family: "GameOfSquids";
+           src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
+       }
+       @font-face {
+           font-family: "PlayerFont";
+           src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
+       }
+ 
+       body {
+           font-family: "GameOfSquids", sans-serif;
+           background-color: #101010;
+           color: white;
+           text-align: center;
+           margin: 0;
+           padding: 20px;
+       }
+       h1 {
+           font-size: 3rem;
+           margin: 20px 0;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           gap: 10px;
+           color: white;
+       }
+       h1 span {
+           display: inline-block;
+           font-family: "GameOfSquids", sans-serif;
+           font-size: 3rem;
+       }
+       h1 span.shape-circle {
+           color: #ff3e68;
+       }
+       h1 span.shape-triangle {
+           color: #ff3e68;
+       }
+       h1 span.shape-square {
+           color: #ff3e68;
+           transform: scale(1.4);
+           display: inline-block;
+       }
+ 
+       #players-container {
+           display: flex;
+           flex-wrap: wrap;
+           justify-content: center;
+           gap: 10px;
+       }
+ 
+       .player-card {
+           width: 80px;
+           height: 120px;
+           border: 2px solid white;
+           border-radius: 5px;
+           background-color: #007575;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           flex-direction: column;
+           cursor: pointer;
+           font-family: "PlayerFont", sans-serif;
+           position: relative;
+       }
+       .player-card.active {
+           border-color: limegreen;
+           background-color: #0a0;
+       }
+       .player-card.no-lives {
+           background-color: #505050 !important;
+           opacity: 0.7;
+       }
+ 
+       .player-card-number {
+           font-size: 2rem;
+           color: white;
+           background-color: #005050;
+           padding: 5px 10px;
+           border: 2px solid white;
+           border-radius: 5px;
+       }
+       .player-lives {
+           font-size: 1.6rem; 
+           color: white;
+           margin-top: 5px;
+       }
+ 
+       /* Boutons très bas */
+       .buttons-container {
+           margin-top: 400px; /* Ajuste si tu veux descendre encore plus */
+       }
+       button {
+           padding: 10px 20px;
+           font-size: 1.2rem;
+           border: none;
+           border-radius: 5px;
+           cursor: pointer;
+           margin: 20px 10px;
+           font-family: "GameOfSquids", sans-serif;
+       }
+       #submit-btn {
+           background-color: #ff3e68;
+           color: white;
+       }
+       #submit-btn:hover {
+           background-color: #c32d4e;
+       }
+       #reset-btn {
+           background-color: #32cd32;
+           color: white;
+       }
+       #reset-btn:hover {
+           background-color: #228b22;
+       }
+       #undo-btn {
+           background-color: #888;
+           color: white;
+       }
+       #undo-btn:hover {
+           background-color: #555;
+       }
+       #voice-btn {
+           background-color: #3f51b5;
+           color: white;
+       }
+       #voice-btn:hover {
+           background-color: #303f9f;
+       }
+       #lives-input {
+           padding: 10px;
+           font-size: 1.2rem;
+           border-radius: 5px;
+           border: 1px solid #fff;
+           margin: 20px;
+           background-color: #202020;
+           color: #fff;
+       }
+ 
+       /* Animation du coeur */
+       .heart-animation {
+           position: absolute;
+           font-size: 2rem;
+           color: red;
+           z-index: 9999;
+           pointer-events: none;
+           opacity: 1;
+       }
+       .minus-life {
+           position: absolute;
+           color: red;
+           font-size: 1.5rem;
+           font-weight: bold;
+           opacity: 1;
+           transform: translate(-50%, 0);
+           pointer-events: none;
+       }
+ 
+       /* Overlay pour l'affichage en grand des gagnants */
+       #winners-overlay {
+           display: none; /* Par défaut masqué */
+           position: fixed;
+           top: 0; left: 0; right: 0; bottom: 0;
+           background-color: rgba(0, 0, 0, 0.9);
+           z-index: 99999;
+           justify-content: center;
+           align-items: center;
+           flex-wrap: wrap;
+           gap: 20px;
+           padding: 20px;
+       }
+       .winner-clone {
+           width: 140px; 
+           height: 200px;
+           margin: 10px;
+           background-color: #007575;
+           border: 3px solid #fff;
+           border-radius: 5px;
+           display: flex;
+           flex-direction: column;
+           justify-content: center;
+           align-items: center;
+           animation: fadein 0.3s ease;
+       }
+       .winner-clone .clone-number {
+           font-size: 3rem;
+           background-color: #005050;
+           color: #fff;
+           border: 2px solid #fff;
+           border-radius: 5px;
+           padding: 5px 10px;
+           margin: 5px;
+       }
+       .winner-clone .clone-lives {
+           font-size: 1.5rem;
+           color: #fff;
+           margin-top: 5px;
+       }
+       @keyframes fadein {
+           from { transform: scale(0.8); opacity: 0; }
+           to   { transform: scale(1); opacity: 1; }
+       }
+   </style>
+ </head>
+ <body>
+   <h1>
+       <span>SQUID</span>
+       <span class="shape-circle">O</span>
+       <span class="shape-triangle">Δ</span>
+       <span class="shape-square">■</span>
+       <span>GAME</span>
+   </h1>
+   <p>À qui le tour ?</p>
+ 
+   <!-- Overlay caché pour l'affichage en grand des gagnants -->
+   <div id="winners-overlay"></div>
+ 
+   <!-- Zone pour afficher la transcription vocale interim si besoin -->
+   <div style="margin-top: 20px; font-size: 1rem; color: #ccc;" id="interimText"></div>
+   <!-- On a retiré le <div id="interimText"> -->
+ 
+   <div id="players-container"></div>
+ 
+   <div class="buttons-container">
+       <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
+       <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
+       <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
+       <button id="undo-btn" onclick="undoAction()">Retour</button>
+       <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+   </div>
+ 
+   <script>
+       // === 0) Récupération du nombre de joueurs via l'URL ===
+       const urlParams = new URLSearchParams(window.location.search);
+       const numPlayers = parseInt(urlParams.get('players'), 10) || 100;
+ 
+       // === 1) Players + snapshot pour annuler (retour) ===
+       let players = Array.from({ length: numPlayers }, (_, i) => ({
+           id: i + 1,
+           lives: 6,
+           isWinner: false,
+       }));
+       let lastPlayers = null; // stocke l'état précédent
+ 
+       function saveState() {
+           lastPlayers = JSON.parse(JSON.stringify(players));
+       }
+ 
+       function undoAction() {
+           if (!lastPlayers) {
+               console.warn("Aucune action à annuler");
+               return;
+           }
+           players = JSON.parse(JSON.stringify(lastPlayers));
+           hideWinners();
+           renderPlayers();
+       }
+ 
+       // === 1b) Transfert de vies
+       function transferLives(donorId, receiverId, amount) {
+           const donor = players.find(p => p.id === donorId);
+           const receiver = players.find(p => p.id === receiverId);
+           if (!donor || !receiver) return;
+           if (donor.lives < amount) amount = donor.lives;
+           donor.lives -= amount;
+           receiver.lives += amount;
+           renderPlayers();
+       }
+ 
+       // === 2) Audio fade in/out
+       const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
+       audio.volume = 1.0;
+       let fadeInterval = null;
+       function playAudioFadeIn() {
+           if (fadeInterval) clearInterval(fadeInterval);
+           audio.pause();
+           audio.currentTime = 0;
+           audio.volume = 0;
+           audio.play().catch(err => console.warn("Impossible audio:", err));
+           fadeInterval = setInterval(() => {
+               if (audio.volume < 1) {
+                   audio.volume = Math.min(audio.volume + 0.1, 1);
+               } else {
+                   clearInterval(fadeInterval);
+                   fadeInterval = null;
+               }
+           }, 200);
+       }
+       function stopAudioFadeOut() {
+           if (fadeInterval) clearInterval(fadeInterval);
+           fadeInterval = setInterval(() => {
+               if (audio.volume > 0.1) {
+                   audio.volume -= 0.1;
+               } else {
+                   audio.pause();
+                   audio.currentTime = 0;
+                   clearInterval(fadeInterval);
+                   fadeInterval = null;
+               }
+           }, 200);
+       }
+ 
+       // === 3) Rendu players
+       function renderPlayers() {
+           const container = document.getElementById('players-container');
+           container.innerHTML = '';
+           players.forEach(player => {
+               let cardClass = 'player-card';
+               if (player.isWinner) cardClass += ' active';
+               if (player.lives <= 0) cardClass += ' no-lives';
+ 
+               const playerCard = document.createElement('div');
+               playerCard.className = cardClass;
+               playerCard.onclick = () => toggleWinnerManually(player.id);
+ 
+               const playerNumber = document.createElement('div');
+               playerNumber.className = 'player-card-number';
+               playerNumber.textContent = player.id.toString().padStart(3, '0');
+ 
+               const playerLives = document.createElement('div');
+               playerLives.className = 'player-lives';
+               playerLives.textContent = `Vies: ${player.lives}`;
+ 
+               playerCard.appendChild(playerNumber);
+               playerCard.appendChild(playerLives);
+               container.appendChild(playerCard);
+           });
+       }
+       function toggleWinnerManually(playerId) {
+           saveState();
+           const player = players.find(p => p.id === playerId);
+           if (!player) return;
+           player.isWinner = !player.isWinner;
+           renderPlayers(); 
+       }
+ 
+       function toggleWinner(playerId) {
+           saveState();
+           const p = players.find(x => x.id === playerId);
+           if (!p) return;
+           p.isWinner = !p.isWinner;
+           renderPlayers();
+           showWinners();
+       }
+ 
+       function toggleWinnerInstant(playerId) {
+           saveState();
+           const p = players.find(x => x.id === playerId);
+           if (!p) return;
+           p.isWinner = true;
+           renderPlayers();
+           showWinners();
+       }
+ 
+       // === 5) processRound
+       function processRound() {
+           saveState();
+           hideWinners();
+           const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
+           players.forEach(p => {
+               if (!p.isWinner && p.lives > 0) {
+                   p.lives -= livesToRemove;
+                   if (p.lives < 0) p.lives = 0;
+               }
+               p.isWinner = false;
+           });
+           renderPlayers();
+       }
+ 
+       // === 6) reset
+       function confirmReset() {
+           const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
+           if (!sure) return;
+           saveState();
+           hideWinners();
+           players.forEach(p => {
+               p.lives = 6;
+               p.isWinner = false;
+           });
+           renderPlayers();
+       }
+ 
+       // === 7) Winners Overlay
+       function showWinners() {
+           const overlay = document.getElementById('winners-overlay');
+           overlay.innerHTML = '';
+           const winners = players.filter(p => p.isWinner);
+           if (winners.length === 0) {
+               overlay.style.display = 'none';
+               return;
+           }
+ 
+           const children = document.getElementById('players-container').children;
+           for (let c of children) {
+               const num = c.querySelector('.player-card-number').textContent;
+               const id = parseInt(num, 10);
+               const pl = players.find(x => x.id === id);
+               if (pl && pl.isWinner) {
+                   c.style.display = 'none';
+               }
+           }
+ 
+           winners.forEach(w => {
+               const clone = document.createElement('div');
+               clone.className = 'winner-clone';
+               clone.onclick = () => {
+                   saveState();
+                   w.isWinner = false;
+                   hideWinners();
+                   renderPlayers();
+               };
+ 
+               const cloneNumber = document.createElement('div');
+               cloneNumber.className = 'clone-number';
+               cloneNumber.textContent = w.id.toString().padStart(3, '0');
+ 
+               const cloneLives = document.createElement('div');
+               cloneLives.className = 'clone-lives';
+               cloneLives.textContent = `Vies: ${w.lives}`;
+ 
+               clone.appendChild(cloneNumber);
+               clone.appendChild(cloneLives);
+               overlay.appendChild(clone);
+           });
+ 
+           overlay.style.display = 'flex';
+       }
+       function hideWinners() {
+           const overlay = document.getElementById('winners-overlay');
+           overlay.innerHTML = '';
+           overlay.style.display = 'none';
+ 
+           const children = document.getElementById('players-container').children;
+           for (let c of children) {
+               c.style.display = '';
+           }
+       }
+ 
+       // === 8) showMinusLife
+       function showMinusLife(playerId, lostValue) {
+           const container = document.getElementById('players-container').children;
+           let card = null;
+           for (let c of container) {
+               const numberDiv = c.querySelector('.player-card-number');
+               const cardId = parseInt(numberDiv.textContent);
+               if (cardId === playerId) {
+                   card = c;
+                   break;
+               }
+           }
+           if (!card) return;
+ 
+           const rect = card.getBoundingClientRect();
+           const minusEl = document.createElement('div');
+           minusEl.className = 'minus-life';
+           minusEl.textContent = `-${lostValue}`;
+           document.body.appendChild(minusEl);
+ 
+           minusEl.style.left = (rect.left + rect.width / 2) + 'px';
+           minusEl.style.top = rect.top + 'px';
+ 
+           minusEl.animate([
+               { transform: 'translate(-50%, 0)', opacity: 1 },
+               { transform: 'translate(-50%, -50px)', opacity: 0 }
+           ], {
+               duration: 1000,
+               easing: 'ease-out'
+           }).onfinish = () => {
+               document.body.removeChild(minusEl);
+           };
+       }
+ 
+       // === 9) Reconnaissance vocale
+       let recognition = null;
+       let isVoiceActive = false;
+ 
+       // Empêcher la re-sélection multiple d'un même nombre dans l'interim
+       // Pour éviter de sélectionner plusieurs fois le même nombre en interim
+       let interimMemory = new Set();
+ 
+       // Détermine si on TRAITE les commandes
+       // Définit si on TRAITE les commandes
+       let isCommandMode = false;
+ 
+       function toggleVoiceRecognition() {
+           if (!('webkitSpeechRecognition' in window)) {
+               console.error("La reconnaissance vocale n'est pas supportée.");
+               return;
+           }
+ 
+           const voiceBtn = document.getElementById('voice-btn');
+           if (!recognition) {
+               // Initialisation
+               recognition = new webkitSpeechRecognition();
+               recognition.lang = 'fr-FR';
+               recognition.interimResults = true;
+               recognition.maxAlternatives = 1;
+               recognition.continuous = true;
+ 
+               recognition.onresult = (event) => {
+                   for (let i = event.resultIndex; i < event.results.length; i++) {
+                       const result = event.results[i];
+                       const transcript = result[0].transcript.toLowerCase().trim();
+ 
+                       // Affichage en direct (optionnel)
+                       // On ne fait PLUS rien de visuel (supprimé l'interimText)
+                       if (!result.isFinal) {
+                           document.getElementById('interimText').textContent = transcript;
+                           // On n'affiche pas
+                           // On vérifie si on est en mode commande pour "detectNumbersOnTheFly"
+                           if (isCommandMode) detectNumbersOnTheFly(transcript);
+                       } else {
+                           document.getElementById('interimText').textContent = '';
+                           // Phrase finale
+                           interimMemory.clear();
+                       }
+ 
+                       // Vérifie si on doit "activer" ou "désactiver"
+                       if (transcript.includes('activer')) {
+                           isCommandMode = true;
+                           console.log('Mode commande activé !');
+                       }
+                       if (transcript.includes('désactiver')) {
+                           isCommandMode = false;
+                           console.log('Mode commande désactivé !');
+                       }
+ 
+                       // Si on est en mode commande, on interprète
+                       if (isCommandMode) {
+                           if (!result.isFinal) {
+                               // interim => on détecte les nombres
+                               detectNumbersOnTheFly(transcript);
+                           } else {
+                               // final => on traite la commande
+                           // On détecte activation/désactivation
+                           if (transcript.includes('activer')) {
+                               isCommandMode = true;
+                               console.log('Mode commande activé !');
+                           }
+                           if (transcript.includes('désactiver')) {
+                               isCommandMode = false;
+                               console.log('Mode commande désactivé !');
+                           }
+                           // Si on est en mode commande => traite la phrase
+                           if (isCommandMode) {
+                               handleVoiceResult(transcript);
+                           }
+                           // sinon on ignore
+                       }
+                       // Sinon, on ignore simplement ce qui est dit (sauf la détection activer/désactiver ci-dessus)
+                   }
+               };
+ 
+               recognition.onerror = (e) => console.error('Erreur vocale:', e.error);
+               recognition.onend = () => {
+                   if (isVoiceActive) recognition.start();
+               };
+           }
+ 
+           if (!isVoiceActive) {
+               recognition.start();
+               isVoiceActive = true;
+               voiceBtn.textContent = "Désactiver la Reconnaissance Vocale";
+           } else {
+               isVoiceActive = false;
+               recognition.stop();
+               voiceBtn.textContent = "Activer la Reconnaissance Vocale";
+           }
+       }
+ 
+       function detectNumbersOnTheFly(text) {
+           const digitMatches = text.match(/\d+/g);
+           if (digitMatches) {
+               digitMatches.forEach(numStr => {
+                   const numVal = parseInt(numStr, 10);
+                   if (!interimMemory.has(numVal)) {
+                       interimMemory.add(numVal);
+                       toggleWinnerInstant(numVal);
+                   }
+               });
+           }
+       }
+ 
+       const spelledNumbers = {
+           'un': 1, 'une': 1,
+           'deux': 2, 'de': 2,
+           'trois': 3, 'quatre': 4,
+           'cinq': 5, 'six': 6,
+           'sept': 7, 'huit': 8,
+           'neuf': 9, 'dix': 10,
+           'devis': 2, 'paires': 2
+       };
+ 
+       function handleVoiceResult(finalString) {
+           console.log('Reco vocale (final):', finalString);
+           const result = finalString;
+ 
+           // Puis toutes les commandes existantes
+           // "retour"
+           if (result.includes('retour')) {
+               undoAction();
+               return;
+           }
+ 
+           // "retire moi tous les numéros" etc.
+           if (
+               result.includes('retire moi tous les numéros') ||
+               result.includes('retire-moi tous les numéros') ||
+               result.includes('retiens-moi tous les numéros') ||
+               result.includes('rupture moi tous les numéros')
+           ) {
+               saveState();
+               hideWinners();
+               players.forEach(p => p.isWinner = false);
+               renderPlayers();
+               return;
+           }
+ 
+           // "gagnant" => on lance la musique
+           // "gagnant"
+           if (result.includes('gagnant')) {
+               stopAudioFadeOut();
+               playAudioFadeIn();
+           }
+ 
+           // "les autres perdront X"
+           const perdrontMatch = result.match(/les autres perdront (\d+)/i);
+           if (perdrontMatch) {
+               saveState();
+               hideWinners();
+               stopAudioFadeOut();
+               const livesToRemove = parseInt(perdrontMatch[1], 10);
+               players.forEach(p => {
+                   if (!p.isWinner && p.lives > 0) {
+                       p.lives -= livesToRemove;
+                       if (p.lives < 0) p.lives = 0;
+                       showMinusLife(p.id, livesToRemove);
+                   }
+                   p.isWinner = false;
+               });
+               renderPlayers();
+               return;
+           }
+ 
+           // "les autres perdent X vies"
+           if (result.includes('les autres perdent')) {
+               saveState();
+               hideWinners();
+               stopAudioFadeOut();
+               const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
+               const spelledMatch = result.match(spelledRegex);
+               if (spelledMatch) {
+                   let val = spelledMatch[1];
+                   if (spelledNumbers[val] !== undefined) {
+                       val = spelledNumbers[val];
+                   } else {
+                       val = parseInt(val, 10);
+                   }
+                   players.forEach(p => {
+                       if (!p.isWinner && p.lives > 0) {
+                           p.lives -= val;
+                           if (p.lives < 0) p.lives = 0;
+                           showMinusLife(p.id, val);
+                       }
+                       p.isWinner = false;
+                   });
+                   renderPlayers();
+               }
+               return;
+           }
+ 
+           // "les autres paires de vie" / "les autres paires de devis"
+           // "les autres paires de vie"/"les autres paires de devis"
+           if (result.includes('les autres paires de vie') || result.includes('les autres paires de devis')) {
+               saveState();
+               hideWinners();
+               stopAudioFadeOut();
+               const val = 2;
+               players.forEach(p => {
+                   if (!p.isWinner && p.lives > 0) {
+                       p.lives -= val;
+                       if (p.lives < 0) p.lives = 0;
+                       showMinusLife(p.id, val);
+                   }
+                   p.isWinner = false;
+               });
+               renderPlayers();
+               return;
+           }
+ 
+           // "tu peux me transférer X vies..."
+           if (result.includes('tu peux me transférer')) {
+               saveState();
+               hideWinners();
+               const amountMatch = result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
+               if (!amountMatch) return;
+ 
+               let amountRaw = amountMatch[1].toLowerCase();
+               let amountVal = spelledNumbers[amountRaw] !== undefined ? spelledNumbers[amountRaw] : parseInt(amountRaw, 10);
+ 
+               const digits = result.match(/\d+/g);
+               if (!digits || digits.length < 2) {
+                   console.warn("Pas assez de nombres pour détecter donneur / receveur");
+                   return;
+               }
+               const donorId = parseInt(digits[0], 10);
+               const receiverId = parseInt(digits[1], 10);
+               transferLives(donorId, receiverId, amountVal);
+               return;
+           }
+ 
+           // Sinon "gagnant X Y Z"
+           const matches = result.match(/\d+/g);
+           if (matches) {
+               saveState();
+               matches.forEach(num => {
+                   const pid = parseInt(num, 10);
+                   const pl = players.find(x => x.id === pid);
+                   if (pl) pl.isWinner = true;
+               });
+               renderPlayers();
+               showWinners();
+           }
+       }
+ 
+       // Démarre
+       // Démarrage initial
+       renderPlayers();
+   </script>
+ </body>
+ </html>
