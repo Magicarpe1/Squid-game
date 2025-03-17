@@ -7,11 +7,11 @@
   <style>
     @font-face {
       font-family: "GameOfSquids";
-      src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf");
+      src: url("https://ik.imagekit.io/lakolo/GameOfSquids-1GMVL.ttf?updatedAt=1737276103466");
     }
     @font-face {
       font-family: "PlayerFont";
-      src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf");
+      src: url("https://ik.imagekit.io/lakolo/JMH%20Beda.ttf?updatedAt=1736878741238");
     }
 
     body {
@@ -77,7 +77,6 @@
       background-color: #505050 !important;
       opacity: 0.7;
     }
-
     .player-card-number {
       font-size: 2rem;
       color: white;
@@ -140,13 +139,6 @@
     #teams-btn:hover {
       background-color: #e6b800;
     }
-    #break-teams-btn {
-      background-color: #777;
-      color: white;
-    }
-    #break-teams-btn:hover {
-      background-color: #555;
-    }
 
     #lives-input {
       padding: 10px;
@@ -158,7 +150,7 @@
       color: #fff;
     }
 
-    /* Effet d'animation pour la perte de vie */
+    /* Animation du coeur ou perte de vie */
     .minus-life {
       position: absolute;
       color: red;
@@ -169,7 +161,7 @@
       pointer-events: none;
     }
 
-    /* Overlay pour les gagnants */
+    /* Overlay pour l'affichage des gagnants */
     #winners-overlay {
       display: none;
       position: fixed;
@@ -211,15 +203,16 @@
     }
     @keyframes fadein {
       from { transform: scale(0.8); opacity: 0; }
-      to   { transform: scale(1);   opacity: 1; }
+      to   { transform: scale(1); opacity: 1; }
     }
 
-    /* Overlay pour le décompte */
+    /* Overlay pour le décompte + GIF */
     #countdown-overlay {
       display: none;
       position: fixed;
       top:0; left:0; right:0; bottom:0;
-      background-color: rgba(0,0,0,0.8);
+      background: url("https://media2.giphy.com/media/vYgA05wKXUtudv6lVe/giphy.gif") no-repeat center center;
+      background-size: cover;
       z-index: 999999;
       justify-content: center;
       align-items: center;
@@ -230,11 +223,10 @@
       font-family: "GameOfSquids", sans-serif;
     }
 
-    /* Conteneur des équipes => flex horizontal (pas de scroll vertical si possible) */
+    /* Conteneur des équipes */
     #teams-container {
       display: none;
       margin-top: 30px;
-      display: flex;
       justify-content: center;
       gap: 30px;
       flex-wrap: nowrap;
@@ -258,409 +250,428 @@
       justify-content: center;
       gap: 10px;
     }
-
   </style>
 </head>
 <body>
-<h1>
-  <span>SQUID</span>
-  <span class="shape-circle">O</span>
-  <span class="shape-triangle">Δ</span>
-  <span class="shape-square">■</span>
-  <span>GAME</span>
-</h1>
-<p>À qui le tour ?</p>
+  <h1>
+    <span>SQUID</span>
+    <span class="shape-circle">O</span>
+    <span class="shape-triangle">Δ</span>
+    <span class="shape-square">■</span>
+    <span>GAME</span>
+  </h1>
+  <p>À qui le tour ?</p>
 
-<!-- Overlay gagnants -->
-<div id="winners-overlay"></div>
+  <!-- Overlay gagnants -->
+  <div id="winners-overlay"></div>
 
-<!-- Overlay décompte -->
-<div id="countdown-overlay">
-  <div id="countdown-number">3</div>
-</div>
+  <!-- Overlay décompte (GIF + voix) -->
+  <div id="countdown-overlay">
+    <div id="countdown-number">3</div>
+  </div>
 
-<!-- Container principal (joueurs) -->
-<div id="players-container"></div>
+  <!-- Container principal des joueurs -->
+  <div id="players-container"></div>
 
-<!-- Container final (équipes) -->
-<div id="teams-container"></div>
+  <!-- Container des équipes -->
+  <div id="teams-container"></div>
 
-<div class="buttons-container">
-  <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
-  <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
-  <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
-  <button id="undo-btn" onclick="undoAction()">Retour</button>
-  <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+  <div class="buttons-container">
+    <input id="lives-input" type="number" placeholder="Vies à supprimer" min="1" />
+    <button id="submit-btn" onclick="processRound()">Soumettre les gagnants</button>
+    <button id="reset-btn" onclick="confirmReset()">Réinitialiser les vies</button>
+    <button id="undo-btn" onclick="undoAction()">Retour</button>
+    <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
+    <!-- Bouton : Créer Équipes -->
+    <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
+  </div>
 
-  <!-- Bouton Créer Equipes -->
-  <button id="teams-btn" onclick="createTeams()">Créer les équipes</button>
+  <script>
+    // === 0) Récupération du nombre de joueurs via l'URL ===
+    const urlParams = new URLSearchParams(window.location.search);
+    const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
-  <!-- Bouton Casser Equipes -->
-  <button id="break-teams-btn" onclick="breakTeams()">Casser les équipes</button>
-</div>
+    // === 1) Players & snapshot for undo ===
+    let players = Array.from({ length: numPlayers }, (_, i)=>({
+      id: i+1,
+      lives: 6,
+      isWinner: false,
+      team: null
+    }));
+    let lastPlayers = null;
 
-<script>
-  // ------------------------------------------------
-  // Paramètres init
-  const urlParams = new URLSearchParams(window.location.search);
-  const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
-  let players = Array.from({ length: numPlayers }, (_, i)=>({
-    id: i+1,
-    lives: 6,
-    isWinner: false
-  }));
-  let lastPlayers = null;
-
-  // ------------------------------------------------
-  // Sauvegarde / Undo
-  function saveState(){
-    lastPlayers = JSON.parse(JSON.stringify(players));
-  }
-  function undoAction(){
-    if(!lastPlayers) {
-      console.warn("Aucune action à annuler");
-      return;
+    function saveState(){
+      lastPlayers = JSON.parse(JSON.stringify(players));
     }
-    players = JSON.parse(JSON.stringify(lastPlayers));
-    hideWinners();
-    renderPlayers();
-  }
-
-  // ------------------------------------------------
-  // Lecture Audio Fond
-  const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
-  audio.volume = 1.0;
-  let fadeInterval = null;
-
-  function playAudioFadeIn(){
-    if(fadeInterval) clearInterval(fadeInterval);
-    audio.pause();
-    audio.currentTime = 0;
-    audio.volume=0;
-    audio.play().catch(err=>console.warn("Impossible audio:", err));
-    fadeInterval = setInterval(()=>{
-      if(audio.volume<1){
-        audio.volume = Math.min(audio.volume+0.1,1);
-      } else {
-        clearInterval(fadeInterval);
-        fadeInterval=null;
+    function undoAction(){
+      if(!lastPlayers){
+        console.warn("Aucune action à annuler");
+        return;
       }
-    }, 200);
-  }
-  function stopAudioFadeOut(){
-    if(fadeInterval) clearInterval(fadeInterval);
-    fadeInterval = setInterval(()=>{
-      if(audio.volume>0.1){
-        audio.volume-=0.1;
-      } else {
-        audio.pause();
-        audio.currentTime=0;
-        clearInterval(fadeInterval);
-        fadeInterval=null;
-      }
-    },200);
-  }
-
-  // ------------------------------------------------
-  // Render Joueurs
-  function renderPlayers(){
-    const container = document.getElementById('players-container');
-    container.innerHTML='';
-    container.style.display='flex'; // On s'assure de réafficher si besoin
-
-    players.forEach(player=>{
-      let cardClass='player-card';
-      if(player.isWinner) cardClass+=' active';
-      if(player.lives<=0) cardClass+=' no-lives';
-
-      const playerCard=document.createElement('div');
-      playerCard.className=cardClass;
-      playerCard.onclick=()=>toggleWinnerManually(player.id);
-
-      const playerNumber=document.createElement('div');
-      playerNumber.className='player-card-number';
-      playerNumber.textContent=player.id.toString().padStart(3,'0');
-
-      const playerLives=document.createElement('div');
-      playerLives.className='player-lives';
-      playerLives.textContent=`Vies: ${player.lives}`;
-
-      playerCard.appendChild(playerNumber);
-      playerCard.appendChild(playerLives);
-      container.appendChild(playerCard);
-    });
-  }
-  function toggleWinnerManually(pid){
-    saveState();
-    const pl=players.find(p=>p.id===pid);
-    if(!pl)return;
-    pl.isWinner=!pl.isWinner;
-    renderPlayers();
-  }
-  function toggleWinner(pid){
-    saveState();
-    const p=players.find(x=>x.id===pid);
-    if(!p)return;
-    p.isWinner=!p.isWinner;
-    renderPlayers();
-    showWinners();
-  }
-  function toggleWinnerInstant(pid){
-    saveState();
-    const p=players.find(x=>x.id===pid);
-    if(!p)return;
-    p.isWinner=true;
-    renderPlayers();
-    showWinners();
-  }
-
-  // ------------------------------------------------
-  // Round / Gagnants
-  function processRound(){
-    saveState();
-    hideWinners();
-    const livesToRemove = parseInt(document.getElementById('lives-input').value)||1;
-    players.forEach(p=>{
-      if(!p.isWinner && p.lives>0){
-        p.lives-=livesToRemove;
-        if(p.lives<0)p.lives=0;
-      }
-      p.isWinner=false;
-    });
-    renderPlayers();
-  }
-  function confirmReset(){
-    const sure=confirm("Êtes-vous sûr de vouloir réinitialiser ?");
-    if(!sure)return;
-    saveState();
-    hideWinners();
-    players.forEach(p=>{
-      p.lives=6;
-      p.isWinner=false;
-    });
-    renderPlayers();
-  }
-
-  function showWinners(){
-    const overlay=document.getElementById('winners-overlay');
-    overlay.innerHTML='';
-    const winners=players.filter(p=>p.isWinner);
-    if(!winners.length){
-      overlay.style.display='none';
-      return;
+      players = JSON.parse(JSON.stringify(lastPlayers));
+      hideWinners();
+      renderPlayers();
     }
-    // on masque les cartes correspondantes
-    const children=document.querySelectorAll('#players-container .player-card');
-    children.forEach(cd=>{
-      const num=cd.querySelector('.player-card-number').textContent;
-      const id=parseInt(num,10);
-      const pl=players.find(x=>x.id===id);
-      if(pl && pl.isWinner){
-        cd.style.display='none';
-      }
-    });
 
-    winners.forEach(w=>{
-      const clone=document.createElement('div');
-      clone.className='winner-clone';
-      clone.onclick=()=>{
-        saveState();
-        w.isWinner=false;
-        hideWinners();
-        renderPlayers();
-      };
-
-      const cloneNumber=document.createElement('div');
-      cloneNumber.className='clone-number';
-      cloneNumber.textContent=w.id.toString().padStart(3,'0');
-
-      const cloneLives=document.createElement('div');
-      cloneLives.className='clone-lives';
-      cloneLives.textContent=`Vies: ${w.lives}`;
-
-      clone.appendChild(cloneNumber);
-      clone.appendChild(cloneLives);
-      overlay.appendChild(clone);
-    });
-    overlay.style.display='flex';
-  }
-  function hideWinners(){
-    const overlay=document.getElementById('winners-overlay');
-    overlay.innerHTML='';
-    overlay.style.display='none';
-
-    const children=document.querySelectorAll('#players-container .player-card');
-    children.forEach(cd=> cd.style.display='');
-  }
-
-  function showMinusLife(pid,val){
-    const c= document.getElementById('players-container').children;
-    let card=null;
-    for(let cd of c){
-      const numberDiv=cd.querySelector('.player-card-number');
-      const cardId=parseInt(numberDiv.textContent);
-      if(cardId===pid) {
-        card=cd;
-        break;
-      }
+    // === 1b) Transfert de vies ===
+    function transferLives(donorId, receiverId, amount){
+      const donor = players.find(p=>p.id===donorId);
+      const receiver = players.find(p=>p.id===receiverId);
+      if(!donor || !receiver)return;
+      if(donor.lives<amount) amount=donor.lives;
+      donor.lives-=amount;
+      receiver.lives+=amount;
+      renderPlayers();
     }
-    if(!card)return;
-    const rect=card.getBoundingClientRect();
-    const minusEl=document.createElement('div');
-    minusEl.className='minus-life';
-    minusEl.textContent=`-${val}`;
-    document.body.appendChild(minusEl);
 
-    minusEl.style.left=(rect.left+rect.width/2)+'px';
-    minusEl.style.top=rect.top+'px';
-
-    minusEl.animate([
-      {transform:'translate(-50%,0)',opacity:1},
-      {transform:'translate(-50%,-50px)',opacity:0}
-    ],{
-      duration:1000,
-      easing:'ease-out'
-    }).onfinish=()=>{
-      document.body.removeChild(minusEl);
-    };
-  }
-
-  // ------------------------------------------------
-  // Reconnaissance Vocale
-  let recognition=null;
-  let isVoiceActive=false;
-  let isCommandMode=false;
-  let interimMemory=new Set();
-
-  function toggleVoiceRecognition(){
-    if(!('webkitSpeechRecognition' in window)){
-      console.error("La reconnaissance vocale n'est pas supportée.");
-      return;
-    }
-    const voiceBtn=document.getElementById('voice-btn');
-    if(!recognition){
-      recognition=new webkitSpeechRecognition();
-      recognition.lang='fr-FR';
-      recognition.interimResults=true;
-      recognition.maxAlternatives=1;
-      recognition.continuous=true;
-
-      recognition.onresult=(event)=>{
-        for(let i=event.resultIndex;i<event.results.length;i++){
-          const result=event.results[i];
-          const transcript=result[0].transcript.toLowerCase().trim();
-
-          if(!result.isFinal){
-            // interim
-            if(isCommandMode){
-              detectNumbersOnTheFly(transcript);
-            }
-          } else {
-            // final
-            interimMemory.clear();
-            if(transcript.includes('activer')) isCommandMode=true;
-            if(transcript.includes('désactiver')) isCommandMode=false;
-            if(isCommandMode) handleVoiceResult(transcript);
-          }
+    // === 2) Audio background fade in/out ===
+    const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
+    audio.volume=1.0;
+    let fadeInterval = null;
+    function playAudioFadeIn(){
+      if(fadeInterval) clearInterval(fadeInterval);
+      audio.pause();
+      audio.currentTime=0;
+      audio.volume=0;
+      audio.play().catch(err=>console.warn("Impossible audio:", err));
+      fadeInterval = setInterval(()=>{
+        if(audio.volume<1){
+          audio.volume=Math.min(audio.volume+0.1,1);
+        } else {
+          clearInterval(fadeInterval);
+          fadeInterval=null;
         }
-      };
-      recognition.onerror=(err)=>console.error("Erreur vocale:",err);
-      recognition.onend=()=>{
-        if(isVoiceActive) recognition.start();
-      };
+      },200);
     }
-    if(!isVoiceActive){
-      recognition.start();
-      isVoiceActive=true;
-      voiceBtn.textContent="Désactiver la Reconnaissance Vocale";
-    } else {
-      isVoiceActive=false;
-      recognition.stop();
-      voiceBtn.textContent="Activer la Reconnaissance Vocale";
-    }
-  }
-
-  function detectNumbersOnTheFly(text){
-    const digitMatches=text.match(/\d+/g);
-    if(digitMatches){
-      digitMatches.forEach(numStr=>{
-        const numVal=parseInt(numStr,10);
-        if(!interimMemory.has(numVal)){
-          interimMemory.add(numVal);
-          toggleWinnerInstant(numVal);
+    function stopAudioFadeOut(){
+      if(fadeInterval) clearInterval(fadeInterval);
+      fadeInterval=setInterval(()=>{
+        if(audio.volume>0.1){
+          audio.volume-=0.1;
+        } else {
+          audio.pause();
+          audio.currentTime=0;
+          clearInterval(fadeInterval);
+          fadeInterval=null;
         }
+      },200);
+    }
+
+    // === 3) Render Players ===
+    function renderPlayers(){
+      const container=document.getElementById('players-container');
+      container.innerHTML='';
+      container.style.display='flex'; // assure la réapparition si on cassait les équipes
+      players.forEach(p=>{
+        let cardClass='player-card';
+        if(p.isWinner) cardClass+=' active';
+        if(p.lives<=0) cardClass+=' no-lives';
+
+        const card=document.createElement('div');
+        card.className=cardClass;
+        card.onclick=()=>toggleWinnerManually(p.id);
+
+        const pn=document.createElement('div');
+        pn.className='player-card-number';
+        pn.textContent=p.id.toString().padStart(3,'0');
+
+        const lv=document.createElement('div');
+        lv.className='player-lives';
+        lv.textContent=`Vies: ${p.lives}`;
+
+        card.appendChild(pn);
+        card.appendChild(lv);
+        container.appendChild(card);
       });
     }
-  }
-
-  const spelledNumbers={
-    'un':1,'une':1,
-    'deux':2,'de':2,
-    'trois':3,'quatre':4,
-    'cinq':5,'six':6,
-    'sept':7,'huit':8,
-    'neuf':9,'dix':10,
-    'devis':2,'paires':2
-  };
-
-  function handleVoiceResult(result){
-    console.log("Reco vocale (final):", result);
-
-    // "retour"
-    if(result.includes('retour')){
-      undoAction();
-      return;
-    }
-    // "retire moi tous les numéros"
-    if(
-      result.includes('retire moi tous les numéros') ||
-      result.includes('retire-moi tous les numéros') ||
-      result.includes('retiens-moi tous les numéros') ||
-      result.includes('rupture moi tous les numéros')
-    ){
+    function toggleWinnerManually(pid){
       saveState();
-      hideWinners();
-      players.forEach(p=> p.isWinner=false);
+      const pl=players.find(x=>x.id===pid);
+      if(!pl)return;
+      pl.isWinner=!pl.isWinner;
       renderPlayers();
-      return;
     }
-    // "gagnant"
-    if(result.includes('gagnant')){
-      stopAudioFadeOut();
-      playAudioFadeIn();
+    function toggleWinner(pid){
+      saveState();
+      const pl=players.find(x=>x.id===pid);
+      if(!pl)return;
+      pl.isWinner=!pl.isWinner;
+      renderPlayers();
+      showWinners();
     }
-    // "les autres perdront X"
-    const perdrontMatch=result.match(/les autres perdront (\d+)/i);
-    if(perdrontMatch){
+    function toggleWinnerInstant(pid){
+      saveState();
+      const pl=players.find(x=>x.id===pid);
+      if(!pl)return;
+      pl.isWinner=true;
+      renderPlayers();
+      showWinners();
+    }
+
+    // === 5) Process Round ===
+    function processRound(){
       saveState();
       hideWinners();
-      stopAudioFadeOut();
-      const livesToRemove=parseInt(perdrontMatch[1],10);
+      const val=parseInt(document.getElementById('lives-input').value)||1;
       players.forEach(p=>{
         if(!p.isWinner && p.lives>0){
-          p.lives-=livesToRemove;
+          p.lives-=val;
           if(p.lives<0)p.lives=0;
-          showMinusLife(p.id,livesToRemove);
         }
         p.isWinner=false;
       });
       renderPlayers();
-      return;
     }
-    // "les autres perdent X vies"
-    if(result.includes('les autres perdent')){
+    // === 6) Reset ===
+    function confirmReset(){
+      const sure=confirm("Êtes-vous sûr de vouloir réinitialiser ?");
+      if(!sure)return;
       saveState();
       hideWinners();
-      stopAudioFadeOut();
-      const spelledRegex=/les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
-      const spelledMatch=result.match(spelledRegex);
-      if(spelledMatch){
-        let val= spelledMatch[1];
-        if(spelledNumbers[val]!==undefined){
-          val= spelledNumbers[val];
-        } else {
-          val= parseInt(val,10);
+      players.forEach(p=>{
+        p.lives=6;
+        p.isWinner=false;
+        p.team=null;
+      });
+      renderPlayers();
+    }
+
+    // === 7) Winners Overlay ===
+    function showWinners(){
+      const w= players.filter(x=>x.isWinner);
+      const ov= document.getElementById('winners-overlay');
+      ov.innerHTML='';
+      if(!w.length){
+        ov.style.display='none';
+        return;
+      }
+      // masque les cartes correspondantes
+      const children=document.getElementById('players-container').children;
+      for(let c of children){
+        const num=c.querySelector('.player-card-number').textContent;
+        const id=parseInt(num,10);
+        const pl=players.find(xx=>xx.id===id);
+        if(pl && pl.isWinner){
+          c.style.display='none';
         }
+      }
+      w.forEach(wi=>{
+        const clone=document.createElement('div');
+        clone.className='winner-clone';
+        clone.onclick=()=>{
+          saveState();
+          wi.isWinner=false;
+          hideWinners();
+          renderPlayers();
+        };
+        const cn=document.createElement('div');
+        cn.className='clone-number';
+        cn.textContent= wi.id.toString().padStart(3,'0');
+
+        const cl=document.createElement('div');
+        cl.className='clone-lives';
+        cl.textContent=`Vies: ${wi.lives}`;
+
+        clone.appendChild(cn);
+        clone.appendChild(cl);
+        ov.appendChild(clone);
+      });
+      ov.style.display='flex';
+    }
+    function hideWinners(){
+      const ov=document.getElementById('winners-overlay');
+      ov.innerHTML='';
+      ov.style.display='none';
+      const children=document.getElementById('players-container').children;
+      for(let c of children){
+        c.style.display='';
+      }
+    }
+
+    // === 8) showMinusLife ===
+    function showMinusLife(pid, lostValue){
+      const c=document.getElementById('players-container').children;
+      let cardEl=null;
+      for(let cd of c){
+        const numberDiv=cd.querySelector('.player-card-number');
+        const cardId=parseInt(numberDiv.textContent);
+        if(cardId===pid){
+          cardEl=cd;
+          break;
+        }
+      }
+      if(!cardEl)return;
+      const rect=cardEl.getBoundingClientRect();
+      const minusEl=document.createElement('div');
+      minusEl.className='minus-life';
+      minusEl.textContent=`-${lostValue}`;
+      document.body.appendChild(minusEl);
+
+      minusEl.style.left=(rect.left+rect.width/2)+'px';
+      minusEl.style.top=rect.top+'px';
+
+      minusEl.animate([
+        {transform:'translate(-50%,0)',opacity:1},
+        {transform:'translate(-50%,-50px)',opacity:0}
+      ],{
+        duration:1000,
+        easing:'ease-out'
+      }).onfinish=()=>{
+        document.body.removeChild(minusEl);
+      };
+    }
+
+    // === 9) Reconnaissance vocale ===
+    let recognition=null;
+    let isVoiceActive=false;
+    let isCommandMode=false;
+    let interimMemory=new Set();
+
+    function toggleVoiceRecognition(){
+      if(!('webkitSpeechRecognition' in window)){
+        console.error("La reconnaissance vocale n'est pas supportée.");
+        return;
+      }
+      const vb=document.getElementById('voice-btn');
+      if(!recognition){
+        recognition=new webkitSpeechRecognition();
+        recognition.lang='fr-FR';
+        recognition.interimResults=true;
+        recognition.maxAlternatives=1;
+        recognition.continuous=true;
+
+        recognition.onresult=(event)=>{
+          for(let i=event.resultIndex;i<event.results.length;i++){
+            const r=event.results[i];
+            const transcript=r[0].transcript.toLowerCase().trim();
+
+            if(!r.isFinal){
+              if(isCommandMode) detectNumbersOnTheFly(transcript);
+            } else {
+              interimMemory.clear();
+              if(transcript.includes('activer')) isCommandMode=true;
+              if(transcript.includes('désactiver')) isCommandMode=false;
+              if(isCommandMode){
+                handleVoiceResult(transcript);
+              }
+            }
+          }
+        };
+        recognition.onerror=(err)=>console.error("Erreur vocale:",err);
+        recognition.onend=()=>{
+          if(isVoiceActive) recognition.start();
+        };
+      }
+      if(!isVoiceActive){
+        recognition.start();
+        isVoiceActive=true;
+        vb.textContent="Désactiver la Reconnaissance Vocale";
+      } else {
+        isVoiceActive=false;
+        recognition.stop();
+        vb.textContent="Activer la Reconnaissance Vocale";
+      }
+    }
+
+    function detectNumbersOnTheFly(txt){
+      const digitMatches=txt.match(/\d+/g);
+      if(digitMatches){
+        digitMatches.forEach(numStr=>{
+          const numVal=parseInt(numStr,10);
+          if(!interimMemory.has(numVal)){
+            interimMemory.add(numVal);
+            toggleWinnerInstant(numVal);
+          }
+        });
+      }
+    }
+
+    const spelledNumbers={
+      'un':1,'une':1,
+      'deux':2,'de':2,
+      'trois':3,'quatre':4,
+      'cinq':5,'six':6,
+      'sept':7,'huit':8,
+      'neuf':9,'dix':10,
+      'devis':2,'paires':2
+    };
+
+    function handleVoiceResult(str){
+      console.log("Reco final:", str);
+
+      // "retour"
+      if(str.includes('retour')){
+        undoAction();
+        return;
+      }
+      // "retire moi tous les numéros"
+      if(
+        str.includes('retire moi tous les numéros')||
+        str.includes('retire-moi tous les numéros')||
+        str.includes('retiens-moi tous les numéros')||
+        str.includes('rupture moi tous les numéros')
+      ){
+        saveState();
+        hideWinners();
+        players.forEach(p=>p.isWinner=false);
+        renderPlayers();
+        return;
+      }
+      // "gagnant"
+      if(str.includes('gagnant')){
+        stopAudioFadeOut();
+        playAudioFadeIn();
+      }
+      // "les autres perdront X"
+      const perdrontMatch=str.match(/les autres perdront (\d+)/i);
+      if(perdrontMatch){
+        saveState();
+        hideWinners();
+        stopAudioFadeOut();
+        const livesToRemove=parseInt(perdrontMatch[1],10);
+        players.forEach(p=>{
+          if(!p.isWinner && p.lives>0){
+            p.lives-=livesToRemove;
+            if(p.lives<0)p.lives=0;
+            showMinusLife(p.id,livesToRemove);
+          }
+          p.isWinner=false;
+        });
+        renderPlayers();
+        return;
+      }
+      // "les autres perdent X vies"
+      if(str.includes('les autres perdent')){
+        saveState();
+        hideWinners();
+        stopAudioFadeOut();
+        const spelledRegex=/les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
+        const spelledMatch=str.match(spelledRegex);
+        if(spelledMatch){
+          let val= spelledMatch[1];
+          if(spelledNumbers[val]!==undefined){
+            val= spelledNumbers[val];
+          } else {
+            val=parseInt(val,10);
+          }
+          players.forEach(p=>{
+            if(!p.isWinner && p.lives>0){
+              p.lives-=val;
+              if(p.lives<0)p.lives=0;
+              showMinusLife(p.id,val);
+            }
+            p.isWinner=false;
+          });
+          renderPlayers();
+        }
+        return;
+      }
+      // "les autres paires de vie"
+      if(str.includes('les autres paires de vie')||str.includes('les autres paires de devis')){
+        saveState();
+        hideWinners();
+        stopAudioFadeOut();
+        const val=2;
         players.forEach(p=>{
           if(!p.isWinner && p.lives>0){
             p.lives-=val;
@@ -670,175 +681,137 @@
           p.isWinner=false;
         });
         renderPlayers();
-      }
-      return;
-    }
-    // "les autres paires de vie"/"les autres paires de devis"
-    if(result.includes('les autres paires de vie')||result.includes('les autres paires de devis')){
-      saveState();
-      hideWinners();
-      stopAudioFadeOut();
-      const val=2;
-      players.forEach(p=>{
-        if(!p.isWinner && p.lives>0){
-          p.lives-=val;
-          if(p.lives<0)p.lives=0;
-          showMinusLife(p.id,val);
-        }
-        p.isWinner=false;
-      });
-      renderPlayers();
-      return;
-    }
-    // "tu peux me transférer X vies..."
-    if(result.includes('tu peux me transférer')){
-      saveState();
-      hideWinners();
-      const amountMatch=result.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
-      if(!amountMatch)return;
-      let amountRaw= amountMatch[1].toLowerCase();
-      let amountVal= spelledNumbers[amountRaw]!==undefined? spelledNumbers[amountRaw]: parseInt(amountRaw,10);
-
-      const digits=result.match(/\d+/g);
-      if(!digits||digits.length<2){
-        console.warn("Pas assez de nombres pour détecter donneur / receveur");
         return;
       }
-      const donorId=parseInt(digits[0],10);
-      const receiverId=parseInt(digits[1],10);
-      transferLives(donorId,receiverId,amountVal);
-      return;
-    }
-    // Sinon "gagnant X Y Z"
-    const matches=result.match(/\d+/g);
-    if(matches){
-      saveState();
-      matches.forEach(num=>{
-        const pid=parseInt(num,10);
-        const pl=players.find(x=>x.id===pid);
-        if(pl) pl.isWinner=true;
-      });
-      renderPlayers();
-      showWinners();
-    }
-  }
+      // "tu peux me transférer X vies..."
+      if(str.includes('tu peux me transférer')){
+        saveState();
+        hideWinners();
+        const amountMatch=str.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
+        if(!amountMatch)return;
+        let amountRaw=amountMatch[1].toLowerCase();
+        let amountVal= spelledNumbers[amountRaw]!==undefined ? spelledNumbers[amountRaw]: parseInt(amountRaw,10);
 
-  // ------------------------------------------------
-  // Equipes + Décompte
-  function createTeams(){
-    const nb=prompt("Combien d'équipes ?","2");
-    if(!nb||isNaN(nb)||nb<1)return;
-
-    startCountdown(3, ()=>{
-      distributionEquipes(parseInt(nb,10));
-    });
-  }
-
-  // Décompte avec overlay et lecture de voix
-  function startCountdown(from, callback) {
-    const over = document.getElementById('countdown-overlay');
-    const numEl = document.getElementById('countdown-number');
-    over.style.display = 'flex';
-
-    let val = from;
-    numEl.textContent = val;
-
-    // Fichier audio à chaque tick
-    const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/ElevenLabs_2025-03-15T14_23_41_SG_ivc_s89_sb82_se28_b_m2.mp3?updatedAt=1742048759828");
-    countdownAudio.volume = 1;
-
-    const timer = setInterval(()=>{
-      val--;
-      if(val>0){
-        numEl.textContent= val;
-        // Lecture de l'audio pour chaque décompte
-        countdownAudio.currentTime=0;
-        countdownAudio.play().catch(err=> console.warn("Audio error:", err));
-      } else {
-        clearInterval(timer);
-        over.style.display='none';
-        callback();
+        const digits=str.match(/\d+/g);
+        if(!digits||digits.length<2){
+          console.warn("Pas assez de nombres pour détecter donneur/receveur");
+          return;
+        }
+        const donorId=parseInt(digits[0],10);
+        const receiverId=parseInt(digits[1],10);
+        transferLives(donorId,receiverId,amountVal);
+        return;
       }
-    },1000);
-  }
-
-  function distributionEquipes(nbEquipes){
-    // Shuffle
-    let arr=[...players];
-    for(let i=arr.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [arr[i], arr[j]]=[arr[j], arr[i]];
+      // Sinon "gagnant X Y Z"
+      const matches=str.match(/\d+/g);
+      if(matches){
+        saveState();
+        matches.forEach(num=>{
+          const pid=parseInt(num,10);
+          const pl=players.find(x=>x.id===pid);
+          if(pl) pl.isWinner=true;
+        });
+        renderPlayers();
+        showWinners();
+      }
     }
-    // Round-robin
-    let teams= Array.from({length:nbEquipes},()=>[]);
-    let idx=0;
-    arr.forEach(p=>{
-      teams[idx].push(p);
-      idx=(idx+1)%nbEquipes;
-    });
 
-    // On masque le players-container
-    const pc=document.getElementById('players-container');
-    pc.innerHTML='';
-    pc.style.display='none';
+    // =============== Équipes + Décompte ===============
+    function createTeams(){
+      const nb= prompt("Combien d'équipes ?","2");
+      if(!nb||isNaN(nb)||nb<1)return;
+      startCountdown(3, ()=>{
+        distributionEquipes(parseInt(nb,10));
+      });
+    }
 
-    // On affiche le teams-container
-    const tc=document.getElementById('teams-container');
-    tc.innerHTML='';
-    tc.style.display='flex';
+    // *** DÉCOMPTE AVEC GIF ET VOIX (Lecture du son une SEULE fois) ***
+    function startCountdown(from, callback) {
+      const over=document.getElementById('countdown-overlay');
+      const numEl=document.getElementById('countdown-number');
+      over.style.display='flex';
 
-    teams.forEach((teamArr,i)=>{
-      const box=document.createElement('div');
-      box.className='team-box';
+      let val=from;
+      numEl.textContent= val;
 
-      const title=document.createElement('h2');
-      title.textContent= "Équipe "+(i+1);
-      box.appendChild(title);
+      // On lance le son UNE fois au début
+      const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Kids%20x%2071%20Digits%20_%20Red%20Light,%20Green%20Light%20(Official%20Audio).mp3?updatedAt=1742050169733");
+      countdownAudio.volume=1;
+      countdownAudio.play().catch(err=> console.warn("Audio error:", err));
 
-      const cardsDiv=document.createElement('div');
-      cardsDiv.className='team-cards';
+      const timer=setInterval(()=>{
+        val--;
+        if(val>0){
+          numEl.textContent= val;
+        } else {
+          clearInterval(timer);
+          over.style.display='none';
+          callback();
+        }
+      },1000);
+    }
 
-      teamArr.forEach(p=>{
-        const card=document.createElement('div');
-        card.className='player-card';
-        if(p.lives<=0) card.classList.add('no-lives');
-        if(p.isWinner) card.classList.add('active');
-
-        const num=document.createElement('div');
-        num.className='player-card-number';
-        num.textContent= p.id.toString().padStart(3,'0');
-
-        const lv=document.createElement('div');
-        lv.className='player-lives';
-        lv.textContent=`Vies: ${p.lives}`;
-
-        card.appendChild(num);
-        card.appendChild(lv);
-        cardsDiv.appendChild(card);
+    function distributionEquipes(nbEquipes){
+      // On mélange
+      let arr=[...players];
+      for(let i=arr.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+      }
+      // Round-robin
+      let teams=Array.from({length:nbEquipes},()=>[]);
+      let idx=0;
+      arr.forEach(p=>{
+        teams[idx].push(p);
+        idx=(idx+1)%nbEquipes;
       });
 
-      box.appendChild(cardsDiv);
-      tc.appendChild(box);
-    });
-  }
+      // On cache le players-container
+      const pc=document.getElementById('players-container');
+      pc.innerHTML='';
+      pc.style.display='none';
 
-  function breakTeams(){
-    // On supprime le contenu de #teams-container
-    const tc=document.getElementById('teams-container');
-    tc.innerHTML='';
-    tc.style.display='none';
+      // On montre le teams-container
+      const tc=document.getElementById('teams-container');
+      tc.innerHTML='';
+      tc.style.display='flex';
 
-    // On ré-affiche le #players-container
-    const pc=document.getElementById('players-container');
-    pc.style.display='flex';
+      teams.forEach((teamArr,i)=>{
+        const box=document.createElement('div');
+        box.className='team-box';
 
-    // On rerender
+        const title=document.createElement('h2');
+        title.textContent="Équipe "+(i+1);
+        box.appendChild(title);
+
+        const cardsDiv=document.createElement('div');
+        cardsDiv.className='team-cards';
+
+        teamArr.forEach(p=>{
+          const card=document.createElement('div');
+          card.className='player-card';
+          if(p.lives<=0) card.classList.add('no-lives');
+
+          const num=document.createElement('div');
+          num.className='player-card-number';
+          num.textContent=p.id.toString().padStart(3,'0');
+
+          const lv=document.createElement('div');
+          lv.className='player-lives';
+          lv.textContent=`Vies: ${p.lives}`;
+
+          card.appendChild(num);
+          card.appendChild(lv);
+          cardsDiv.appendChild(card);
+        });
+
+        box.appendChild(cardsDiv);
+        tc.appendChild(box);
+      });
+    }
+
+    // Lancement initial
     renderPlayers();
-  }
-
-  // ------------------------------------------------
-  // Lancement initial
-  renderPlayers();
-</script>
+  </script>
 </body>
 </html>
