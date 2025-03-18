@@ -578,25 +578,27 @@
       recognition.maxAlternatives = 1;
       recognition.continuous = true;
 
+      // *** NOUVEL ÉVÈNEMENT ONRESULT ***
       recognition.onresult = (event) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const r = event.results[i];
           const transcript = r[0].transcript.toLowerCase().trim();
 
           if (!r.isFinal) {
-            // interim
-            if (isCommandMode) detectNumbersOnTheFly(transcript);
+            // Ne rien faire ou juste afficher le transcript « en cours » si besoin
+            // console.log("Interim:", transcript);
           } else {
-            // final
+            // Résultat final
             interimMemory.clear();
             if (transcript.includes('activer')) isCommandMode = true;
             if (transcript.includes('désactiver')) isCommandMode = false;
             if (isCommandMode) {
-              handleVoiceResult(transcript);
+              handleVoiceResult(transcript); // On gère la détection seulement ici
             }
           }
         }
       };
+
       recognition.onerror = (err) => console.error("Erreur vocale:", err);
       recognition.onend = () => {
         if (isVoiceActive) recognition.start();
@@ -610,19 +612,6 @@
       isVoiceActive = false;
       recognition.stop();
       vb.textContent = "Activer la Reconnaissance Vocale";
-    }
-  }
-
-  function detectNumbersOnTheFly(txt) {
-    const digitMatches = txt.match(/\d+/g);
-    if (digitMatches) {
-      digitMatches.forEach(numStr => {
-        const numVal = parseInt(numStr, 10);
-        if (!interimMemory.has(numVal)) {
-          interimMemory.add(numVal);
-          toggleWinnerInstant(numVal);
-        }
-      });
     }
   }
 
@@ -767,7 +756,6 @@
 
   // =============== Équipes + Décompte ===============
 
-  // Lecture du champ #teams-input au lieu du prompt
   function createTeams(){
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
@@ -790,7 +778,6 @@
     let val= from;
     numEl.textContent = val;
 
-    // On lance le son UNE seule fois
     const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Kids%20x%2071%20Digits%20_%20Red%20Light,%20Green%20Light%20(Official%20Audio).mp3?updatedAt=1742050169733");
     countdownAudio.volume = 1;
     countdownAudio.play().catch(err=> console.warn("Audio error:", err));
@@ -884,7 +871,6 @@
 
   // Lancement initial
   renderPlayers();
-
 </script>
 </body>
 </html>
