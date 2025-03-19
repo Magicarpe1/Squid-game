@@ -395,7 +395,9 @@
     }, 200);
   }
 
- const photoBaseURL = "https://raw.githubusercontent.com/Magicarpe1/Squid-game/46fc6f0bc422ed290f9f056e8608b082b9afcbad/";
+  // Vous pouvez modifier le chemin des photos si besoin.
+  // *** AJOUT : si vous avez un autre chemin, mettez-le ici. ***
+  const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
   function renderPlayers() {
     const container = document.getElementById('players-container');
@@ -411,6 +413,15 @@
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
     
+      // *** AJOUT IMAGE DANS LES CARTES (principal) ***
+      const img = document.createElement('img');
+      img.src = `${photoBaseURL}${p.id}.jpg`;
+      img.style.width = '100%';
+      img.style.height = '40%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '5px 5px 0 0';
+      card.appendChild(img);
+
       const pn = document.createElement('div');
       pn.className = 'player-card-number';
       pn.textContent = p.id.toString().padStart(3, '0');
@@ -419,20 +430,12 @@
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
     
-      // Ajout de l'image
-      const img = document.createElement('img');
-      img.src = `https://github.com/Magicarpe1/Squid-game/raw/main/images/${p.id}.jpg`;
-      img.style.width = '100%';
-      img.style.height = '40%';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '5px 5px 0 0';
-    
-      card.appendChild(img);
       card.appendChild(pn);
       card.appendChild(lv);
       container.appendChild(card);
     });
   }
+
   function toggleWinnerManually(pid) {
     saveState();
     const pl = players.find(x => x.id === pid);
@@ -471,6 +474,7 @@
     });
     renderPlayers();
   }
+
   // === 6) Reset ===
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
@@ -494,16 +498,35 @@
       ov.style.display = 'none';
       return;
     }
-    // masque les cartes correspondantes
-    const children = document.getElementById('players-container').children;
-    for (let c of children) {
-      const num = c.querySelector('.player-card-number').textContent;
-      const id = parseInt(num, 10);
-      const pl = players.find(xx => xx.id === id);
-      if (pl && pl.isWinner) {
-        c.style.display = 'none';
+    // Cache les cartes correspondantes dans le players-container
+    const pc = document.getElementById('players-container');
+    if (pc.style.display !== 'none') {
+      const children = pc.children;
+      for (let c of children) {
+        const num = c.querySelector('.player-card-number').textContent;
+        const id = parseInt(num, 10);
+        const pl = players.find(xx => xx.id === id);
+        if (pl && pl.isWinner) {
+          c.style.display = 'none';
+        }
       }
     }
+
+    // *** AJOUT : on cache aussi les cartes correspondantes dans le teams-container si visible ***
+    const tc = document.getElementById('teams-container');
+    if (tc.style.display !== 'none') {
+      const teamCards = tc.querySelectorAll('.player-card');
+      for (let card of teamCards) {
+        const num = card.querySelector('.player-card-number').textContent;
+        const id = parseInt(num, 10);
+        const pl = players.find(xx => xx.id === id);
+        if (pl && pl.isWinner) {
+          card.style.display = 'none';
+        }
+      }
+    }
+
+    // Création du clone dans l'overlay
     w.forEach(wi => {
       const clone = document.createElement('div');
       clone.className = 'winner-clone';
@@ -511,8 +534,9 @@
         saveState();
         wi.isWinner = false;
         hideWinners();
-        renderPlayers();
+        renderPlayers(); // ou re-renderTeams() si besoin
       };
+
       const cn = document.createElement('div');
       cn.className = 'clone-number';
       cn.textContent = wi.id.toString().padStart(3, '0');
@@ -527,13 +551,23 @@
     });
     ov.style.display = 'flex';
   }
+
   function hideWinners() {
     const ov = document.getElementById('winners-overlay');
     ov.innerHTML = '';
     ov.style.display = 'none';
-    const children = document.getElementById('players-container').children;
+    // Ré-affiche les cartes du players-container
+    const pc = document.getElementById('players-container');
+    const children = pc.children;
     for (let c of children) {
       c.style.display = '';
+    }
+
+    // Ré-affiche aussi les cartes du teams-container
+    const tc = document.getElementById('teams-container');
+    const teamCards = tc.querySelectorAll('.player-card');
+    for (let card of teamCards) {
+      card.style.display = '';
     }
   }
 
@@ -574,7 +608,16 @@
   let recognition = null;
   let isVoiceActive = false;
   let isCommandMode = false;
-  let interimMemory = new Set();
+
+  const spelledNumbers = {
+    'un': 1, 'une': 1,
+    'deux': 2, 'de': 2,
+    'trois': 3, 'quatre': 4,
+    'cinq': 5, 'six': 6,
+    'sept': 7, 'huit': 8,
+    'neuf': 9, 'dix': 10,
+    'devis': 2, 'paires': 2
+  };
 
   function toggleVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) {
@@ -589,22 +632,18 @@
       recognition.maxAlternatives = 1;
       recognition.continuous = true;
 
-      // *** NOUVEL ÉVÈNEMENT ONRESULT ***
       recognition.onresult = (event) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const r = event.results[i];
           const transcript = r[0].transcript.toLowerCase().trim();
 
           if (!r.isFinal) {
-            // Ne rien faire ou juste afficher le transcript « en cours » si besoin
-            // console.log("Interim:", transcript);
+            // Interim si besoin
           } else {
-            // Résultat final
-            interimMemory.clear();
             if (transcript.includes('activer')) isCommandMode = true;
             if (transcript.includes('désactiver')) isCommandMode = false;
             if (isCommandMode) {
-              handleVoiceResult(transcript); // On gère la détection seulement ici
+              handleVoiceResult(transcript);
             }
           }
         }
@@ -626,20 +665,8 @@
     }
   }
 
-  const spelledNumbers = {
-    'un': 1, 'une': 1,
-    'deux': 2, 'de': 2,
-    'trois': 3, 'quatre': 4,
-    'cinq': 5, 'six': 6,
-    'sept': 7, 'huit': 8,
-    'neuf': 9, 'dix': 10,
-    'devis': 2, 'paires': 2
-  };
-
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
-
-    // -- Commandes existantes --
 
     // "retour"
     if (str.includes('retour')) {
@@ -647,7 +674,7 @@
       return;
     }
 
-    // "retire moi tous les numéros" etc.
+    // "retire moi tous les numéros"
     if (
       str.includes('retire moi tous les numéros') ||
       str.includes('retire-moi tous les numéros') ||
@@ -713,7 +740,7 @@
       return;
     }
 
-    // "les autres paires de vie"/"les autres paires de devis"
+    // "les autres paires de vie" => 2
     if (str.includes('les autres paires de vie') || str.includes('les autres paires de devis')) {
       saveState();
       hideWinners();
@@ -731,7 +758,7 @@
       return;
     }
 
-    // "tu peux me transférer X vies..."
+    // "tu peux me transférer X vies du N°A au N°B"
     if (str.includes('tu peux me transférer')) {
       saveState();
       hideWinners();
@@ -751,7 +778,32 @@
       return;
     }
 
-    // Sinon "gagnant X Y Z"
+    // *** AJOUT : "L'équipe vainqueure est l'équipe X" ou "l'équipe gagnante est l'équipe X" ***
+    if (str.includes("l'équipe vainqueure est l'équipe") || str.includes("l'équipe gagnante est l'équipe")) {
+      // On essaie de repérer un nombre/défini (un, deux...) après le mot "équipe"
+      const eqMatch = str.match(/l'équipe (vainqueure|gagnante) est l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
+      if (eqMatch && eqMatch[2]) {
+        const teamString = eqMatch[2];
+        let teamVal = spelledNumbers[teamString] !== undefined
+          ? spelledNumbers[teamString]
+          : parseInt(teamString, 10);
+
+        if (!isNaN(teamVal)) {
+          saveState();
+          hideWinners();
+          // Tous les joueurs de cette équipe => isWinner = true
+          players
+            .filter(p => p.team === teamVal)
+            .forEach(p => p.isWinner = true);
+
+          renderPlayers();
+          showWinners();
+          return;
+        }
+      }
+    }
+
+    // Sinon on cherche des numéros (cas "gagnants 1 2 3")
     const matches = str.match(/\d+/g);
     if (matches) {
       saveState();
@@ -849,6 +901,15 @@
         const card=document.createElement('div');
         card.className='player-card';
         if(p.lives<=0) card.classList.add('no-lives');
+
+        // *** AJOUT IMAGE DANS LES CARTES d'équipe ***
+        const img = document.createElement('img');
+        img.src = `${photoBaseURL}${p.id}.jpg`;
+        img.style.width = '100%';
+        img.style.height = '40%';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '5px 5px 0 0';
+        card.appendChild(img);
 
         const num=document.createElement('div');
         num.className='player-card-number';
