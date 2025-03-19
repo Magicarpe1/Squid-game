@@ -395,28 +395,40 @@
     }, 200);
   }
 
-  // === 3) Render Players ===
+ const photoBaseURL = "https://raw.githubusercontent.com/Magicarpe1/Squid-game/46fc6f0bc422ed290f9f056e8608b082b9afcbad/";
+
+// === 3) Render Players ===
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
-    container.style.display = 'flex'; // reaffiche si on avait cassé
+    container.style.display = 'flex';
+  
     players.forEach(p => {
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
       if (p.lives <= 0) cardClass += ' no-lives';
-
+  
       const card = document.createElement('div');
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
-
+  
+      // Ajout de l'image ici 👇
+      const playerImg = document.createElement('img');
+      playerImg.src = `${photoBaseURL}_DSC2750_face.jpg`; // Ton image test
+      playerImg.style.width = '100%';
+      playerImg.style.height = '60px';
+      playerImg.style.objectFit = 'cover';
+      playerImg.style.borderRadius = '5px 5px 0 0';
+  
       const pn = document.createElement('div');
       pn.className = 'player-card-number';
       pn.textContent = p.id.toString().padStart(3, '0');
-
+  
       const lv = document.createElement('div');
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
-
+  
+      card.appendChild(playerImg); // 👈 Ajoute l'image à la carte
       card.appendChild(pn);
       card.appendChild(lv);
       container.appendChild(card);
