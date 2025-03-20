@@ -107,6 +107,7 @@
       cursor: pointer;
       font-family: "PlayerFont", sans-serif;
       position: relative;
+      transition: 0.3s;
     }
     .player-card.active {
       border-color: limegreen;
@@ -128,6 +129,17 @@
       font-size: 1.6rem;
       color: white;
       margin-top: 5px;
+    }
+
+    /* Signal visuel rouge clignotant pour vie <= 2 */
+    @keyframes blinkRed {
+      0%   { box-shadow: 0 0 10px red; }
+      50%  { box-shadow: 0 0 10px #fff; }
+      100% { box-shadow: 0 0 10px red; }
+    }
+    .low-lives {
+      border-color: red !important;
+      animation: blinkRed 1s infinite;
     }
 
     /* Boutons en bas */
@@ -268,6 +280,7 @@
       border-radius: 5px;
       padding: 10px;
       min-width: 200px;
+      transition: 0.3s;
     }
     .team-box h2 {
       font-family: "GameOfSquids", sans-serif;
@@ -280,6 +293,11 @@
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
+    }
+    /* Pour griser l'intégralité d'une équipe */
+    .team-box.dead-team {
+      opacity: 0.4;
+      background-color: #222 !important;
     }
   </style>
 </head>
@@ -348,6 +366,7 @@
     players = JSON.parse(JSON.stringify(lastPlayers));
     hideWinners();
     renderPlayers();
+    applyTeamStylesIfVisible();
   }
 
   // === 1b) Transfert de vies ===
@@ -355,10 +374,11 @@
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
     if (!donor || !receiver) return;
-    if (donor.lives < amount) amount = donor.lives;
+    if (donor.lives < amount) amount = donor.lives; // ajuster si pas assez de vies
     donor.lives -= amount;
     receiver.lives += amount;
     renderPlayers();
+    applyTeamStylesIfVisible();
   }
 
   // === 2) Audio background fade in/out ===
@@ -396,7 +416,6 @@
   }
 
   // Vous pouvez modifier le chemin des photos si besoin.
-  // *** AJOUT : si vous avez un autre chemin, mettez-le ici. ***
   const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
   function renderPlayers() {
@@ -407,13 +426,21 @@
     players.forEach(p => {
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
-      if (p.lives <= 0) cardClass += ' no-lives';
-    
+
+      // S'il n'a plus de vie
+      if (p.lives <= 0) {
+        cardClass += ' no-lives';
+      }
+      // S'il est encore en vie mais <= 2, rouge clignotant
+      else if (p.lives <= 2) {
+        cardClass += ' low-lives';
+      }
+
       const card = document.createElement('div');
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
     
-      // *** AJOUT IMAGE DANS LES CARTES (principal) ***
+      // Ajout image
       const img = document.createElement('img');
       img.src = `${photoBaseURL}${p.id}.jpg`;
       img.style.width = '100%';
@@ -442,22 +469,18 @@
     if (!pl) return;
     pl.isWinner = !pl.isWinner;
     renderPlayers();
+    applyTeamStylesIfVisible();
   }
-  function toggleWinner(pid) {
+  function toggleWinnerTeam(tid) {
+    // Pour marquer tous les joueurs de cette équipe en winner
     saveState();
-    const pl = players.find(x => x.id === pid);
-    if (!pl) return;
-    pl.isWinner = !pl.isWinner;
+    players
+      .filter(p => p.team === tid)
+      .forEach(p => p.isWinner = true);
+
     renderPlayers();
     showWinners();
-  }
-  function toggleWinnerInstant(pid) {
-    saveState();
-    const pl = players.find(x => x.id === pid);
-    if (!pl) return;
-    pl.isWinner = true;
-    renderPlayers();
-    showWinners();
+    applyTeamStylesIfVisible();
   }
 
   // === 5) Process Round ===
@@ -465,6 +488,7 @@
     saveState();
     hideWinners();
     const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
+    // Tous ceux qui ne sont pas vainqueurs perdent X vies
     players.forEach(p => {
       if (!p.isWinner && p.lives > 0) {
         p.lives -= livesToRemove;
@@ -473,6 +497,7 @@
       p.isWinner = false;
     });
     renderPlayers();
+    applyTeamStylesIfVisible();
   }
 
   // === 6) Reset ===
@@ -487,6 +512,8 @@
       p.team = null;
     });
     renderPlayers();
+    document.getElementById('teams-container').innerHTML = '';
+    document.getElementById('teams-container').style.display = 'none';
   }
 
   // === 7) Winners Overlay ===
@@ -512,7 +539,7 @@
       }
     }
 
-    // *** AJOUT : on cache aussi les cartes correspondantes dans le teams-container si visible ***
+    // Cache aussi les cartes correspondantes dans le teams-container si visible
     const tc = document.getElementById('teams-container');
     if (tc.style.display !== 'none') {
       const teamCards = tc.querySelectorAll('.player-card');
@@ -534,7 +561,8 @@
         saveState();
         wi.isWinner = false;
         hideWinners();
-        renderPlayers(); // ou re-renderTeams() si besoin
+        renderPlayers();
+        applyTeamStylesIfVisible();
       };
 
       const cn = document.createElement('div');
@@ -573,6 +601,7 @@
 
   // === 8) showMinusLife ===
   function showMinusLife(pid, lostValue) {
+    // Facultatif si vous voulez voir l'animation dans le players-container
     const c = document.getElementById('players-container').children;
     let cardEl = null;
     for (let cd of c) {
@@ -604,222 +633,8 @@
     };
   }
 
-  // === 9) Reconnaissance vocale ===
-  let recognition = null;
-  let isVoiceActive = false;
-  let isCommandMode = false;
-
-  const spelledNumbers = {
-    'un': 1, 'une': 1,
-    'deux': 2, 'de': 2,
-    'trois': 3, 'quatre': 4,
-    'cinq': 5, 'six': 6,
-    'sept': 7, 'huit': 8,
-    'neuf': 9, 'dix': 10,
-    'devis': 2, 'paires': 2
-  };
-
-  function toggleVoiceRecognition() {
-    if (!('webkitSpeechRecognition' in window)) {
-      console.error("La reconnaissance vocale n'est pas supportée.");
-      return;
-    }
-    const vb = document.getElementById('voice-btn');
-    if (!recognition) {
-      recognition = new webkitSpeechRecognition();
-      recognition.lang = 'fr-FR';
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
-      recognition.continuous = true;
-
-      recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const r = event.results[i];
-          const transcript = r[0].transcript.toLowerCase().trim();
-
-          if (!r.isFinal) {
-            // Interim si besoin
-          } else {
-            if (transcript.includes('activer')) isCommandMode = true;
-            if (transcript.includes('désactiver')) isCommandMode = false;
-            if (isCommandMode) {
-              handleVoiceResult(transcript);
-            }
-          }
-        }
-      };
-
-      recognition.onerror = (err) => console.error("Erreur vocale:", err);
-      recognition.onend = () => {
-        if (isVoiceActive) recognition.start();
-      };
-    }
-    if (!isVoiceActive) {
-      recognition.start();
-      isVoiceActive = true;
-      vb.textContent = "Désactiver la Reconnaissance Vocale";
-    } else {
-      isVoiceActive = false;
-      recognition.stop();
-      vb.textContent = "Activer la Reconnaissance Vocale";
-    }
-  }
-
-  function handleVoiceResult(str) {
-    console.log("Reco final:", str);
-
-    // "retour"
-    if (str.includes('retour')) {
-      undoAction();
-      return;
-    }
-
-    // "retire moi tous les numéros"
-    if (
-      str.includes('retire moi tous les numéros') ||
-      str.includes('retire-moi tous les numéros') ||
-      str.includes('retiens-moi tous les numéros') ||
-      str.includes('rupture moi tous les numéros')
-    ) {
-      saveState();
-      hideWinners();
-      players.forEach(p => p.isWinner = false);
-      renderPlayers();
-      return;
-    }
-
-    // "gagnant"
-    if (str.includes('gagnant')) {
-      stopAudioFadeOut();
-      playAudioFadeIn();
-    }
-
-    // "les autres perdront X"
-    const perdrontMatch = str.match(/les autres perdront (\d+)/i);
-    if (perdrontMatch) {
-      saveState();
-      hideWinners();
-      stopAudioFadeOut();
-      const livesToRemove = parseInt(perdrontMatch[1], 10);
-      players.forEach(p => {
-        if (!p.isWinner && p.lives > 0) {
-          p.lives -= livesToRemove;
-          if (p.lives < 0) p.lives = 0;
-          showMinusLife(p.id, livesToRemove);
-        }
-        p.isWinner = false;
-      });
-      renderPlayers();
-      return;
-    }
-
-    // "les autres perdent X vies"
-    if (str.includes('les autres perdent')) {
-      saveState();
-      hideWinners();
-      stopAudioFadeOut();
-      const spelledRegex = /les autres perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i;
-      const spelledMatch = str.match(spelledRegex);
-      if (spelledMatch) {
-        let val = spelledMatch[1];
-        if (spelledNumbers[val] !== undefined) {
-          val = spelledNumbers[val];
-        } else {
-          val = parseInt(val, 10);
-        }
-        players.forEach(p => {
-          if (!p.isWinner && p.lives > 0) {
-            p.lives -= val;
-            if (p.lives < 0) p.lives = 0;
-            showMinusLife(p.id, val);
-          }
-          p.isWinner = false;
-        });
-        renderPlayers();
-      }
-      return;
-    }
-
-    // "les autres paires de vie" => 2
-    if (str.includes('les autres paires de vie') || str.includes('les autres paires de devis')) {
-      saveState();
-      hideWinners();
-      stopAudioFadeOut();
-      const val = 2;
-      players.forEach(p => {
-        if (!p.isWinner && p.lives > 0) {
-          p.lives -= val;
-          if (p.lives < 0) p.lives = 0;
-          showMinusLife(p.id, val);
-        }
-        p.isWinner = false;
-      });
-      renderPlayers();
-      return;
-    }
-
-    // "tu peux me transférer X vies du N°A au N°B"
-    if (str.includes('tu peux me transférer')) {
-      saveState();
-      hideWinners();
-      const amountMatch = str.match(/(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|devis|paires|\d+)/i);
-      if (!amountMatch) return;
-      let amountRaw = amountMatch[1].toLowerCase();
-      let amountVal = spelledNumbers[amountRaw] !== undefined ? spelledNumbers[amountRaw] : parseInt(amountRaw, 10);
-
-      const digits = str.match(/\d+/g);
-      if (!digits || digits.length < 2) {
-        console.warn("Pas assez de nombres pour détecter donneur / receveur");
-        return;
-      }
-      const donorId = parseInt(digits[0], 10);
-      const receiverId = parseInt(digits[1], 10);
-      transferLives(donorId, receiverId, amountVal);
-      return;
-    }
-
-    // *** AJOUT : "L'équipe vainqueure est l'équipe X" ou "l'équipe gagnante est l'équipe X" ***
-    if (str.includes("l'équipe vainqueure est l'équipe") || str.includes("l'équipe gagnante est l'équipe")) {
-      // On essaie de repérer un nombre/défini (un, deux...) après le mot "équipe"
-      const eqMatch = str.match(/l'équipe (vainqueure|gagnante) est l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
-      if (eqMatch && eqMatch[2]) {
-        const teamString = eqMatch[2];
-        let teamVal = spelledNumbers[teamString] !== undefined
-          ? spelledNumbers[teamString]
-          : parseInt(teamString, 10);
-
-        if (!isNaN(teamVal)) {
-          saveState();
-          hideWinners();
-          // Tous les joueurs de cette équipe => isWinner = true
-          players
-            .filter(p => p.team === teamVal)
-            .forEach(p => p.isWinner = true);
-
-          renderPlayers();
-          showWinners();
-          return;
-        }
-      }
-    }
-
-    // Sinon on cherche des numéros (cas "gagnants 1 2 3")
-    const matches = str.match(/\d+/g);
-    if (matches) {
-      saveState();
-      matches.forEach(num => {
-        const pid = parseInt(num, 10);
-        const pl = players.find(x => x.id === pid);
-        if (pl) pl.isWinner = true;
-      });
-      renderPlayers();
-      showWinners();
-    }
-  }
-
   // =============== Équipes + Décompte ===============
-
-  function createTeams(){
+  function createTeams() {
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
     const nbVal = parseInt(inputEl.value, 10);
@@ -858,7 +673,7 @@
   }
 
   function distributionEquipes(nbEquipes){
-    // On mélange
+    // On mélange (Fisher-Yates)
     let arr=[...players];
     for(let i= arr.length-1; i>0; i--){
       const j=Math.floor(Math.random()*(i+1));
@@ -885,7 +700,7 @@
 
     // On construit chaque équipe
     teams.forEach((teamArr,i)=>{
-      teamArr.forEach(x=> { x.team = i+1; }); // on stocke la team
+      teamArr.forEach(x=> { x.team = i+1; }); // on stocke la team pour chaque player
 
       const box=document.createElement('div');
       box.className='team-box';
@@ -898,11 +713,18 @@
       cardsDiv.className='team-cards';
 
       teamArr.forEach(p=>{
-        const card=document.createElement('div');
-        card.className='player-card';
-        if(p.lives<=0) card.classList.add('no-lives');
+        // Création de la carte
+        let cardClass = 'player-card';
+        if (p.lives <= 0) {
+          cardClass += ' no-lives';
+        } else if (p.lives <= 2) {
+          cardClass += ' low-lives';
+        }
 
-        // *** AJOUT IMAGE DANS LES CARTES d'équipe ***
+        const card=document.createElement('div');
+        card.className=cardClass;
+        
+        // Ajout image
         const img = document.createElement('img');
         img.src = `${photoBaseURL}${p.id}.jpg`;
         img.style.width = '100%';
@@ -927,9 +749,11 @@
       box.appendChild(cardsDiv);
       tc.appendChild(box);
     });
+
+    // Appliquer le grisé d'équipe si besoin
+    applyTeamStylesIfVisible();
   }
 
-  // Bouton "Casser les équipes"
   function breakTeams(){
     // On supprime l'affichage teams
     const tc=document.getElementById('teams-container');
@@ -939,6 +763,185 @@
     players.forEach(p=> p.team=null);
     // On re-rend la liste standard
     renderPlayers();
+  }
+
+  // Quand on modifie des vies, on veut check si, dans chaque équipe, un joueur est à 0 => griser l'équipe
+  function applyTeamStylesIfVisible(){
+    const tc = document.getElementById('teams-container');
+    if (tc.style.display === 'none') return;
+    
+    // Chaque .team-box correspond à 1 équipe
+    const boxes = tc.querySelectorAll('.team-box');
+    boxes.forEach((box, index) => {
+      const teamNumber = index + 1; 
+      // On regarde les players de cette team
+      const teamPlayers = players.filter(p => p.team === teamNumber);
+      // S'il y a au moins un joueur à 0 => on "grise" l'équipe
+      const isDead = teamPlayers.some(p => p.lives <= 0);
+      if(isDead){
+        box.classList.add('dead-team');
+      } else {
+        box.classList.remove('dead-team');
+      }
+    });
+  }
+
+
+  // === 9) Reconnaissance vocale ===
+  let recognition = null;
+  let isVoiceActive = false;
+  let isCommandMode = false;
+
+  // Utile pour interpréter "un/deux/..." en nombre
+  const spelledNumbers = {
+    'un': 1, 'une': 1,
+    'deux': 2, 'de': 2,
+    'trois': 3, 'quatre': 4,
+    'cinq': 5, 'six': 6,
+    'sept': 7, 'huit': 8,
+    'neuf': 9, 'dix': 10,
+    'devis': 2, 'paires': 2
+  };
+
+  function toggleVoiceRecognition() {
+    if (!('webkitSpeechRecognition' in window)) {
+      console.error("La reconnaissance vocale n'est pas supportée.");
+      return;
+    }
+    const vb = document.getElementById('voice-btn');
+    if (!recognition) {
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = 'fr-FR';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = true;
+
+      recognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const r = event.results[i];
+          const transcript = r[0].transcript.toLowerCase().trim();
+
+          if (!r.isFinal) {
+            // interim
+          } else {
+            // Résultat final
+            if (transcript.includes('activer')) isCommandMode = true;
+            if (transcript.includes('désactiver')) isCommandMode = false;
+            if (isCommandMode) {
+              handleVoiceResult(transcript);
+            }
+          }
+        }
+      };
+
+      recognition.onerror = (err) => console.error("Erreur vocale:", err);
+      recognition.onend = () => {
+        if (isVoiceActive) recognition.start();
+      };
+    }
+    if (!isVoiceActive) {
+      recognition.start();
+      isVoiceActive = true;
+      vb.textContent = "Désactiver la Reconnaissance Vocale";
+    } else {
+      isVoiceActive = false;
+      recognition.stop();
+      vb.textContent = "Activer la Reconnaissance Vocale";
+    }
+  }
+
+  function handleVoiceResult(str) {
+    console.log("Reco final:", str);
+
+    // "retour"
+    if (str.includes('retour')) {
+      undoAction();
+      return;
+    }
+
+    // "l'équipe X l'emporte"
+    // ex: "l'équipe deux l'emporte" ou "l'équipe 2 l'emporte"
+    if (str.includes("l'emporte") && str.includes("l'équipe")) {
+      const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
+      if (matchTeam && matchTeam[1]) {
+        let val = matchTeam[1];
+        if (spelledNumbers[val] !== undefined) {
+          val = spelledNumbers[val];
+        } else {
+          val = parseInt(val, 10);
+        }
+        stopAudioFadeOut();
+        playAudioFadeIn();
+        toggleWinnerTeam(val);
+      }
+      return;
+    }
+
+    // "les autres équipes perdent X vies"
+    if (str.includes('les autres équipes perdent')) {
+      const spelledRegex = /les autres équipes perdent (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
+      const spelledMatch = str.match(spelledRegex);
+      if (spelledMatch) {
+        saveState();
+        hideWinners();
+        stopAudioFadeOut();
+        let val = spelledMatch[1].toLowerCase();
+        if (spelledNumbers[val] !== undefined) {
+          val = spelledNumbers[val];
+        } else {
+          val = parseInt(val, 10);
+        }
+        // Trouver l'équipe vainqueure (celle qui a isWinner = true).
+        // OU s’il n’y en a pas, on applique à tout le monde => au choix.
+        const winnersTeams = new Set(players.filter(p => p.isWinner).map(p => p.team));
+        players.forEach(p => {
+          // Si l'équipe du player n'est PAS vainqueure => -val
+          if (!winnersTeams.has(p.team) && p.lives > 0) {
+            p.lives -= val;
+            if (p.lives < 0) p.lives = 0;
+            showMinusLife(p.id, val);
+          }
+          // On réinitialise le isWinner
+          p.isWinner = false;
+        });
+        renderPlayers();
+        applyTeamStylesIfVisible();
+      }
+      return;
+    }
+
+    // "punie moi le joueur X"
+    // => On trouve son équipe, on détermine le plus grand en vies dans cette même équipe,
+    //    on retire 1 vie au plus fort pour la donner à ce X.
+    if (str.includes('punie moi le joueur')) {
+      const digits = str.match(/\d+/);
+      if (!digits) return; 
+      const victimId = parseInt(digits[0], 10);
+      const victimPlayer = players.find(p => p.id === victimId);
+      if (!victimPlayer) return;
+      const t = victimPlayer.team;
+      if (!t) return; // s'il n'est pas en équipe, on ne fait rien ?
+
+      saveState();
+      hideWinners();
+      
+      // On cherche le plus fort de l'équipe
+      const sameTeam = players.filter(p => p.team === t);
+      let maxP = sameTeam[0];
+      sameTeam.forEach(p => {
+        if (p.lives > maxP.lives) {
+          maxP = p;
+        }
+      });
+
+      // Si c'est déjà la « victime » qui a le plus de vies, on ne fait rien
+      // ou on peut décider d'autoriser quand même. A vous de voir.
+      if (maxP.id !== victimId && maxP.lives > 0) {
+        transferLives(maxP.id, victimId, 1);
+      }
+      return;
+    }
+
   }
 
   // Lancement initial
