@@ -22,6 +22,27 @@
       margin: 0;
       padding: 20px;
     }
+
+    /* Conteneur pour les logos en haut à droite */
+    #logos-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #logos-container .logo {
+      width: 60px;  /* Ajustez selon la taille voulue */
+      height: auto;
+    }
+    #logos-container .feat-x {
+      font-size: 2rem;
+      font-family: sans-serif;
+      color: #ff3e68;
+      font-weight: bold;
+    }
+
     h1 {
       font-size: 3rem;
       margin: 20px 0;
@@ -131,14 +152,14 @@
       margin-top: 5px;
     }
 
-    /* Nouvelle animation rouge clignotante pour vie <= 2 */
+    /* Rouge clignotant pour vie <= 2 */
     @keyframes blinkRed {
       0%   { background-color: red; }
       50%  { background-color: #990000; }
       100% { background-color: red; }
     }
     .low-lives {
-      animation: blinkRed 1s infinite; /* Toute la carte blink */
+      animation: blinkRed 1s infinite;
     }
 
     /* Boutons en bas */
@@ -248,7 +269,7 @@
       to   { transform: scale(1);   opacity: 1; }
     }
 
-    /* Overlay pour le décompte + GIF */
+    /* Overlay décompte + GIF */
     #countdown-overlay {
       display: none;
       position: fixed;
@@ -300,6 +321,13 @@
   </style>
 </head>
 <body>
+
+<!-- Ajout du conteneur de logos (en haut à droite) -->
+<div id="logos-container">
+  <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
+  <span class="feat-x">X</span>
+  <img src="https://ik.imagekit.io/lakolo/Animateur%20(1).png?updatedAt=1742471110293" alt="Notre Logo" class="logo" />
+</div>
 
 <h1>
   <span>SQUID</span>
@@ -353,7 +381,6 @@
   }));
   let lastPlayers = null;
 
-  // === Pour stocker la distribution (équipes) actuelle ===
   let currentNbTeams = 0;
   let currentTeams = [];
 
@@ -375,7 +402,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === 1b) Transfert de vies (utilisé dans d'autres commandes) ===
+  // === Transfert de vies (utilisé dans d'autres commandes) ===
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -385,7 +412,7 @@
     receiver.lives += amount;
   }
 
-  // === 2) Audio background fade in/out ===
+  // === Audio fade in/out ===
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
@@ -422,7 +449,7 @@
   // Chemin des photos
   const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
-  // ============= RENDU JOUEURS (MODE SANS ÉQUIPE) ===================
+  // === Rendu joueurs (mode sans équipe) ===
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -432,12 +459,9 @@
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
 
-      // S'il n'a plus de vie
       if (p.lives <= 0) {
         cardClass += ' no-lives';
-      }
-      // Sinon, s'il est encore en vie, <= 2 => toute la carte clignote
-      else if (p.lives <= 2) {
+      } else if (p.lives <= 2) {
         cardClass += ' low-lives';
       }
 
@@ -480,7 +504,6 @@
     }
     applyTeamStylesIfVisible();
   }
-
   function toggleWinnerTeam(tid) {
     saveState();
     players
@@ -492,7 +515,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === 5) Process Round ===
+  // === Process Round ===
   function processRound() {
     saveState();
     hideWinners();
@@ -513,7 +536,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === 6) Reset ===
+  // === Reset ===
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -526,13 +549,12 @@
     });
     currentTeams = [];
     currentNbTeams = 0;
-    const tc = document.getElementById('teams-container');
-    tc.innerHTML='';
-    tc.style.display='none';
+    document.getElementById('teams-container').innerHTML='';
+    document.getElementById('teams-container').style.display='none';
     renderPlayers();
   }
 
-  // === 7) Winners Overlay ===
+  // === Overlay Winners ===
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -607,7 +629,7 @@
     }
   }
 
-  // === 8) showMinusLife ===
+  // === showMinusLife ===
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -857,21 +879,31 @@
     }
 
     // ==================== L'ÉQUIPE X L'EMPORTE =====================
+    // Possibilité d'avoir plusieurs équipes => "l'équipe 1 et 2 l'emporte" ou "les équipes 1 2 lampe porte"
+    // => On cherche tous les nombres après "l'équipe" ou "les équipes"
     if (
-      ((str.includes("l'emporte") || str.includes("lampe porte")) &&
-       str.includes("l'équipe"))
+      (str.includes("l'emporte") || str.includes("lampe porte")) &&
+      (str.includes("l'équipe") || str.includes("les équipes"))
     ) {
-      const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
-      if (matchTeam && matchTeam[1]) {
-        let val = matchTeam[1];
-        if (spelledNumbers[val] !== undefined) {
-          val = spelledNumbers[val];
-        } else {
-          val = parseInt(val, 10);
-        }
+      // On va récupérer tous les nombres (ou mots) "un, deux, etc." dans la phrase
+      // S'il y en a plusieurs, on les toggleWinnerTeam toutes
+      const allMatches = str.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/g);
+      if (allMatches && allMatches.length) {
         stopAudioFadeOut();
         playAudioFadeIn();
-        toggleWinnerTeam(val);
+        let foundAny = false;
+        for (let m of allMatches) {
+          let val = m.toLowerCase();
+          if (spelledNumbers[val] !== undefined) {
+            val = spelledNumbers[val];
+          } else {
+            val = parseInt(val, 10);
+          }
+          if (!isNaN(val) && val > 0) {
+            foundAny = true;
+            toggleWinnerTeam(val);
+          }
+        }
       }
       return;
     }
@@ -939,7 +971,6 @@
       saveState();
       hideWinners();
 
-      // Au lieu d'un transfert, on retire 1 vie directement au joueur ciblé
       if (victimPlayer.lives > 0) {
         victimPlayer.lives -= 1;
         if (victimPlayer.lives < 0) {
