@@ -87,7 +87,7 @@
       background-color: #444;
     }
 
-    /* Container principal des joueurs */
+    /* Container principal (joueurs) */
     #players-container {
       display: flex;
       flex-wrap: wrap;
@@ -131,15 +131,14 @@
       margin-top: 5px;
     }
 
-    /* Signal visuel rouge clignotant pour vie <= 2 */
+    /* Nouvelle animation rouge clignotante pour vie <= 2 */
     @keyframes blinkRed {
-      0%   { box-shadow: 0 0 10px red; }
-      50%  { box-shadow: 0 0 10px #fff; }
-      100% { box-shadow: 0 0 10px red; }
+      0%   { background-color: red; }
+      50%  { background-color: #990000; }
+      100% { background-color: red; }
     }
     .low-lives {
-      border-color: red !important;
-      animation: blinkRed 1s infinite;
+      animation: blinkRed 1s infinite; /* Toute la carte blink */
     }
 
     /* Boutons en bas */
@@ -204,7 +203,7 @@
       pointer-events: none;
     }
 
-    /* Overlay pour les gagnants */
+    /* Overlay gagnants */
     #winners-overlay {
       display: none;
       position: fixed;
@@ -266,7 +265,7 @@
       font-family: "GameOfSquids", sans-serif;
     }
 
-    /* Conteneur des équipes */
+    /* Container des équipes */
     #teams-container {
       display: none;
       margin-top: 30px;
@@ -294,7 +293,6 @@
       justify-content: center;
       gap: 10px;
     }
-    /* Pour griser l'intégralité d'une équipe */
     .team-box.dead-team {
       opacity: 0.4;
       background-color: #222 !important;
@@ -434,9 +432,12 @@
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
 
+      // S'il n'a plus de vie
       if (p.lives <= 0) {
         cardClass += ' no-lives';
-      } else if (p.lives <= 2) {
+      }
+      // Sinon, s'il est encore en vie, <= 2 => toute la carte clignote
+      else if (p.lives <= 2) {
         cardClass += ' low-lives';
       }
 
@@ -933,7 +934,7 @@
       if (!victimPlayer) return;
 
       const t = victimPlayer.team;
-      if (!t) return; // Si pas en équipe, rien à faire
+      if (!t) return;
 
       saveState();
       hideWinners();
@@ -946,7 +947,6 @@
         }
       }
 
-      // On réaffiche
       if (document.getElementById('teams-container').style.display !== 'none') {
         renderTeamsUI();
       } else {
