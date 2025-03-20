@@ -23,24 +23,24 @@
       padding: 20px;
     }
 
-    /* Conteneur pour les logos en haut à droite */
+    /* Conteneur pour les 2 logos + X, en haut à gauche */
     #logos-container {
       position: absolute;
       top: 10px;
-      right: 10px;
+      left: 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 15px; /* Espace entre les éléments */
     }
     #logos-container .logo {
-      width: 60px;  /* Ajustez selon la taille voulue */
+      width: 100px; /* Taille plus grande */
       height: auto;
     }
     #logos-container .feat-x {
-      font-size: 2rem;
-      font-family: sans-serif;
-      color: #ff3e68;
+      font-size: 3rem;
       font-weight: bold;
+      color: #ff3e68;
+      font-family: sans-serif;
     }
 
     h1 {
@@ -152,7 +152,7 @@
       margin-top: 5px;
     }
 
-    /* Rouge clignotant pour vie <= 2 */
+    /* Clignotement rouge si <= 2 vies */
     @keyframes blinkRed {
       0%   { background-color: red; }
       50%  { background-color: #990000; }
@@ -269,7 +269,7 @@
       to   { transform: scale(1);   opacity: 1; }
     }
 
-    /* Overlay décompte + GIF */
+    /* Overlay pour le décompte + GIF */
     #countdown-overlay {
       display: none;
       position: fixed;
@@ -322,11 +322,11 @@
 </head>
 <body>
 
-<!-- Ajout du conteneur de logos (en haut à droite) -->
+<!-- Logos + X en haut à gauche -->
 <div id="logos-container">
-  <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
+  <img src="LOGO_CLIENT.png" alt="Logo Client" class="logo" />
   <span class="feat-x">X</span>
-  <img src="https://ik.imagekit.io/lakolo/Animateur%20(1).png?updatedAt=1742471110293" alt="Notre Logo" class="logo" />
+  <img src="NOTRE_LOGO.png" alt="Notre Logo" class="logo" />
 </div>
 
 <h1>
@@ -368,11 +368,11 @@
 </div>
 
 <script>
-  // === 0) Récupération du nombre de joueurs via l'URL ===
+  // === 0) Récupération du nombre de joueurs
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
-  // === 1) Players & snapshot for undo ===
+  // === 1) Players & snapshot for undo
   let players = Array.from({ length: numPlayers }, (_, i) => ({
     id: i + 1,
     lives: 6,
@@ -388,10 +388,7 @@
     lastPlayers = JSON.parse(JSON.stringify(players));
   }
   function undoAction() {
-    if (!lastPlayers) {
-      console.warn("Aucune action à annuler");
-      return;
-    }
+    if (!lastPlayers) return;
     players = JSON.parse(JSON.stringify(lastPlayers));
     hideWinners();
     if (document.getElementById('teams-container').style.display !== 'none') {
@@ -402,7 +399,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Transfert de vies (utilisé dans d'autres commandes) ===
+  // === Transfert de vies
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -412,11 +409,10 @@
     receiver.lives += amount;
   }
 
-  // === Audio fade in/out ===
+  // === Audio fade in/out
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
-
   function playAudioFadeIn() {
     if (fadeInterval) clearInterval(fadeInterval);
     audio.pause();
@@ -449,16 +445,15 @@
   // Chemin des photos
   const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
-  // === Rendu joueurs (mode sans équipe) ===
+  // === Rendu joueurs (sans équipe)
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
     container.style.display = 'flex';
-  
+
     players.forEach(p => {
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
-
       if (p.lives <= 0) {
         cardClass += ' no-lives';
       } else if (p.lives <= 2) {
@@ -468,7 +463,7 @@
       const card = document.createElement('div');
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
-    
+
       const img = document.createElement('img');
       img.src = `${photoBaseURL}${p.id}.jpg`;
       img.style.width = '100%';
@@ -480,11 +475,11 @@
       const pn = document.createElement('div');
       pn.className = 'player-card-number';
       pn.textContent = p.id.toString().padStart(3, '0');
-    
+
       const lv = document.createElement('div');
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
-    
+
       card.appendChild(pn);
       card.appendChild(lv);
       container.appendChild(card);
@@ -496,7 +491,6 @@
     const pl = players.find(x => x.id === pid);
     if (!pl) return;
     pl.isWinner = !pl.isWinner;
-
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
     } else {
@@ -515,7 +509,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Process Round ===
+  // === Process Round
   function processRound() {
     saveState();
     hideWinners();
@@ -527,7 +521,6 @@
       }
       p.isWinner = false;
     });
-
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
     } else {
@@ -536,7 +529,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Reset ===
+  // === Reset
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -554,7 +547,7 @@
     renderPlayers();
   }
 
-  // === Overlay Winners ===
+  // === Winners Overlay
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -563,6 +556,7 @@
       ov.style.display = 'none';
       return;
     }
+    // Cache cartes
     const pc = document.getElementById('players-container');
     if (pc.style.display !== 'none') {
       for (let c of pc.children) {
@@ -572,7 +566,6 @@
         if (pl && pl.isWinner) c.style.display = 'none';
       }
     }
-
     const tc = document.getElementById('teams-container');
     if (tc.style.display !== 'none') {
       const teamCards = tc.querySelectorAll('.player-card');
@@ -583,7 +576,7 @@
         if (pl && pl.isWinner) card.style.display = 'none';
       }
     }
-
+    // Overlay
     w.forEach(wi => {
       const clone = document.createElement('div');
       clone.className = 'winner-clone';
@@ -598,7 +591,6 @@
         }
         applyTeamStylesIfVisible();
       };
-
       const cn = document.createElement('div');
       cn.className = 'clone-number';
       cn.textContent = wi.id.toString().padStart(3, '0');
@@ -613,11 +605,11 @@
     });
     ov.style.display = 'flex';
   }
-
   function hideWinners() {
     const ov = document.getElementById('winners-overlay');
     ov.innerHTML = '';
     ov.style.display = 'none';
+    // Réaffiche
     const pc = document.getElementById('players-container');
     for (let c of pc.children) {
       c.style.display = '';
@@ -629,7 +621,7 @@
     }
   }
 
-  // === showMinusLife ===
+  // === showMinusLife
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -663,7 +655,7 @@
     };
   }
 
-  // =============== Équipes + Décompte ===============
+  // === Équipes + Décompte
   function createTeams() {
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
@@ -676,7 +668,6 @@
       distributionEquipes(nbVal);
     });
   }
-
   function startCountdown(from, callback){
     const over = document.getElementById('countdown-overlay');
     const numEl= document.getElementById('countdown-number');
@@ -700,7 +691,6 @@
       }
     },1000);
   }
-
   function distributionEquipes(nbEquipes){
     currentNbTeams = nbEquipes;
     let arr=[...players];
@@ -723,7 +713,6 @@
 
     renderTeamsUI();
   }
-
   function renderTeamsUI(){
     const tc= document.getElementById('teams-container');
     tc.innerHTML='';
@@ -779,10 +768,8 @@
       box.appendChild(cardsDiv);
       tc.appendChild(box);
     });
-
     applyTeamStylesIfVisible();
   }
-
   function breakTeams(){
     const tc=document.getElementById('teams-container');
     tc.innerHTML='';
@@ -792,7 +779,6 @@
     currentNbTeams = 0;
     renderPlayers();
   }
-
   function applyTeamStylesIfVisible(){
     const tc = document.getElementById('teams-container');
     if (tc.style.display === 'none') return;
@@ -809,7 +795,7 @@
     });
   }
 
-  // === 9) Reconnaissance vocale ===
+  // === 9) Reconnaissance vocale
   let recognition = null;
   let isVoiceActive = false;
   let isCommandMode = false;
@@ -842,7 +828,7 @@
           const r = event.results[i];
           const transcript = r[0].transcript.toLowerCase().trim();
           if (!r.isFinal) {
-            // interim
+            // ...
           } else {
             if (transcript.includes('activer')) isCommandMode = true;
             if (transcript.includes('désactiver')) isCommandMode = false;
@@ -852,7 +838,6 @@
           }
         }
       };
-
       recognition.onerror = (err) => console.error("Erreur vocale:", err);
       recognition.onend = () => {
         if (isVoiceActive) recognition.start();
@@ -878,37 +863,94 @@
       return;
     }
 
-    // ==================== L'ÉQUIPE X L'EMPORTE =====================
-    // Possibilité d'avoir plusieurs équipes => "l'équipe 1 et 2 l'emporte" ou "les équipes 1 2 lampe porte"
-    // => On cherche tous les nombres après "l'équipe" ou "les équipes"
+    // === L'ÉQUIPE X L'EMPORTE
     if (
-      (str.includes("l'emporte") || str.includes("lampe porte")) &&
-      (str.includes("l'équipe") || str.includes("les équipes"))
+      ((str.includes("l'emporte") || str.includes("lampe porte")) &&
+       str.includes("l'équipe"))
     ) {
-      // On va récupérer tous les nombres (ou mots) "un, deux, etc." dans la phrase
-      // S'il y en a plusieurs, on les toggleWinnerTeam toutes
-      const allMatches = str.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/g);
-      if (allMatches && allMatches.length) {
+      const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
+      if (matchTeam && matchTeam[1]) {
+        let val = matchTeam[1].toLowerCase();
+        if (spelledNumbers[val] !== undefined) {
+          val = spelledNumbers[val];
+        } else {
+          val = parseInt(val, 10);
+        }
         stopAudioFadeOut();
         playAudioFadeIn();
-        let foundAny = false;
-        for (let m of allMatches) {
-          let val = m.toLowerCase();
-          if (spelledNumbers[val] !== undefined) {
-            val = spelledNumbers[val];
-          } else {
-            val = parseInt(val, 10);
-          }
-          if (!isNaN(val) && val > 0) {
-            foundAny = true;
-            toggleWinnerTeam(val);
-          }
-        }
+        toggleWinnerTeam(val);
       }
       return;
     }
 
-    // ==================== LES AUTRES ÉQUIPES PERDENT X VIES =====================
+    // === "team une (et deux) perdent X vies"
+    // Exemple: "team un et deux perdent 3 vies"
+    // On parse toutes les équipes mentionnées, puis la valeur
+    if (
+      str.includes('team') &&
+      str.includes('perdent') &&
+      str.includes('vies')
+    ) {
+      saveState();
+      hideWinners();
+      stopAudioFadeOut();
+
+      // 1) Trouver la valeur X
+      let val = 1;
+      const spelledRegex = /perdent\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vies/i;
+      const spelledMatch = str.match(spelledRegex);
+      if (spelledMatch && spelledMatch[1]) {
+        let rawVal = spelledMatch[1].toLowerCase();
+        if (spelledNumbers[rawVal] !== undefined) {
+          val = spelledNumbers[rawVal];
+        } else {
+          val = parseInt(rawVal, 10);
+        }
+      }
+
+      // 2) Trouver les équipes mentionnées avant "perdent"
+      // On peut chercher toutes les occurrences "un/une/deux/..." ou \d+ après "team"
+      // ex: "team un et deux perdent 3 vies"
+      // => on fait un match global:
+      const teamsSection = str.split('perdent')[0]; // la partie avant "perdent"
+      // On cherche des nombres ou mots dans "teamsSection"
+      const teamMatches = teamsSection.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/gi);
+
+      if (teamMatches && teamMatches.length > 0) {
+        // Pour chacune, on retire X vies à la team correspondante
+        teamMatches.forEach(tm => {
+          let tid = tm.toLowerCase();
+          if (spelledNumbers[tid] !== undefined) {
+            tid = spelledNumbers[tid];
+          } else {
+            tid = parseInt(tid, 10);
+          }
+          if (!isNaN(tid)) {
+            // On applique -val vies à tous les players de l'équipe tid
+            players.forEach(p => {
+              if (p.team === tid && p.lives > 0) {
+                p.lives -= val;
+                if (p.lives < 0) p.lives = 0;
+                showMinusLife(p.id, val);
+              }
+            });
+          }
+        });
+      }
+      // Annule tout winner
+      players.forEach(p => p.isWinner = false);
+
+      // On réaffiche
+      if (document.getElementById('teams-container').style.display !== 'none') {
+        renderTeamsUI();
+      } else {
+        renderPlayers();
+      }
+      applyTeamStylesIfVisible();
+      return;
+    }
+
+    // === Les autres équipes perdent X vies
     if (
        str.includes('les autres équipes perdent') ||
        str.includes('les autres équipes perdront') ||
@@ -922,10 +964,10 @@
       if (str.includes('paires de vie')) {
         val = 2;
       } else {
-        const spelledRegex = /(perdent|perdront)\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
-        const spelledMatch = str.match(spelledRegex);
-        if (spelledMatch && spelledMatch[2]) {
-          let rawVal = spelledMatch[2].toLowerCase();
+        const spelledRegex2 = /(perdent|perdront)\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/i;
+        const spelledMatch2 = str.match(spelledRegex2);
+        if (spelledMatch2 && spelledMatch2[2]) {
+          let rawVal = spelledMatch2[2].toLowerCase();
           if (spelledNumbers[rawVal] !== undefined) {
             val = spelledNumbers[rawVal];
           } else {
@@ -953,7 +995,7 @@
       return;
     }
 
-    // ==================== PUNIE/PUNI/PUNIS MOI LE JOUEUR X =====================
+    // === "punie moi le joueur X"
     if (
       str.includes('punie moi le joueur') ||
       str.includes('puni moi le joueur') ||
@@ -964,18 +1006,14 @@
       const victimId = parseInt(digits[0], 10);
       const victimPlayer = players.find(p => p.id === victimId);
       if (!victimPlayer) return;
-
-      const t = victimPlayer.team;
-      if (!t) return;
+      if (!victimPlayer.team) return;
 
       saveState();
       hideWinners();
 
       if (victimPlayer.lives > 0) {
         victimPlayer.lives -= 1;
-        if (victimPlayer.lives < 0) {
-          victimPlayer.lives = 0;
-        }
+        if (victimPlayer.lives < 0) victimPlayer.lives = 0;
       }
 
       if (document.getElementById('teams-container').style.display !== 'none') {
