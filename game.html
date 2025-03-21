@@ -350,7 +350,7 @@
 </div>
 
 <!-- Indicateur commande vocale (rouge clignotant) -->
-<div id="rec-indicator" style="display: none;"></div>
+<div id="rec-indicator"></div>
 
 <h1>
   <span>SQUID</span>
@@ -407,6 +407,7 @@
   let currentNbTeams = 0;
   let currentTeams = [];
 
+  // Snapshot
   function saveState() {
     lastPlayers = JSON.parse(JSON.stringify(players));
   }
@@ -425,7 +426,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Indicateur rouge clignotant (REC) pour commande vocale
+  // Indicateur rouge clignotant
   function updateCommandIndicator() {
     const el = document.getElementById('rec-indicator');
     if (isCommandMode) {
@@ -435,7 +436,7 @@
     }
   }
 
-  // === Transfert (si besoin)
+  // Transfert de vies
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -445,7 +446,7 @@
     receiver.lives += amount;
   }
 
-  // === 2) Audio background fade in/out
+  // Audio fade
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
@@ -478,9 +479,10 @@
     }, 200);
   }
 
+  // Chemin des photos
   const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
-  // === Rendu joueurs
+  // Rendu joueurs
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -520,7 +522,6 @@
       container.appendChild(card);
     });
   }
-
   function toggleWinnerManually(pid) {
     saveState();
     const pl = players.find(x => x.id === pid);
@@ -544,7 +545,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Process Round
+  // Process Round
   function processRound() {
     saveState();
     hideWinners();
@@ -564,7 +565,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Reset
+  // Reset
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -582,7 +583,7 @@
     renderPlayers();
   }
 
-  // === Winners Overlay
+  // Winners Overlay
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -611,7 +612,6 @@
         if (pl && pl.isWinner) card.style.display = 'none';
       }
     }
-    // Overlay
     w.forEach(wi => {
       const clone = document.createElement('div');
       clone.className = 'winner-clone';
@@ -656,7 +656,7 @@
     }
   }
 
-  // === showMinusLife
+  // showMinusLife
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -690,7 +690,7 @@
     };
   }
 
-  // === Équipes + Décompte
+  // Équipes + Décompte
   function createTeams() {
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
@@ -729,7 +729,7 @@
   function distributionEquipes(nbEquipes){
     currentNbTeams = nbEquipes;
     let arr=[...players];
-    // Shuffle
+    // Shuffle (Fisher-Yates)
     for(let i= arr.length-1; i>0; i--){
       const j=Math.floor(Math.random()*(i+1));
       [arr[i], arr[j]]=[arr[j], arr[i]];
@@ -836,7 +836,7 @@
   let isVoiceActive = false;
   let isCommandMode = false;
 
-  // Dictionnaire
+  // On élargit spelledNumbers pour inclure "paires" => 2, "de" => 2, "devis" => 2...
   const spelledNumbers = {
     'un': 1, 'une': 1,
     'deux': 2, 'de': 2,
@@ -844,14 +844,19 @@
     'cinq': 5, 'six': 6,
     'sept': 7, 'huit': 8,
     'neuf': 9, 'dix': 10,
-    'devis': 2,
+    'devis': 2,    // "paires de devis"
     'paires': 2
   };
 
+  // Substitutions pour mieux matcher
   function synonymsSubstitutions(str) {
+    // "plus ni moins" -> "punie"
     str = str.replace(/plus ni moins/gi, "punie");
+    // "plus ni moi" -> "punie"
     str = str.replace(/plus ni moi/gi, "punie");
+    // "paires de devis" -> "paires de vie"
     str = str.replace(/paires de devis/gi, "paires de vie");
+    // "et l'équipe de père une vie" -> "et l'équipe 2 perd une vie"
     str = str.replace(/\bl'équipe de\b/gi, "l'équipe 2");
     str = str.replace(/\bpère\b/gi, "perd");
     return str;
@@ -914,20 +919,98 @@
     }
   }
 
-  function updateCommandIndicator() {
-    const el = document.getElementById('rec-indicator');
-    if (isCommandMode) {
-      el.style.display = 'block';
-    } else {
-      el.style.display = 'none';
-    }
-  }
-
+  // Gère l'analyse des commandes
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
 
-    // (Vos commandes vocales déjà gérées)
-    // === (1) L'ÉQUIPE X ET Y PERD/ENT UNE VIE
+    // (A) "retour"
+    if (str.includes('retour')) {
+      undoAction();
+      return;
+    }
+
+    // (B) punie/puni/punis "le joueur X" => retire 1 vie au joueur X
+    // On fusionne avec "punie moi le joueur X", etc.
+    if (
+      str.includes('punie le joueur') ||
+      str.includes('punie moi le joueur') ||
+      str.includes('puni le joueur')  ||
+      str.includes('puni moi le joueur')  ||
+      str.includes('punis le joueur') ||
+      str.includes('punis moi le joueur')
+    ) {
+      // On cherche un nombre => l'id du joueur
+      const digits = str.match(/\d+/);
+      if (!digits) return;
+      const victimId = parseInt(digits[0], 10);
+      const victimPlayer = players.find(p => p.id === victimId);
+      if (!victimPlayer) return;
+      // On retire 1 vie direct
+      saveState();
+      hideWinners();
+
+      if (victimPlayer.lives > 0) {
+        victimPlayer.lives -= 1;
+        if (victimPlayer.lives < 0) {
+          victimPlayer.lives = 0;
+        }
+      }
+      if (document.getElementById('teams-container').style.display !== 'none') {
+        renderTeamsUI();
+      } else {
+        renderPlayers();
+      }
+      applyTeamStylesIfVisible();
+      return;
+    }
+
+    // (C) "l'équipe X et Y paires de vie" => ex: "l'équipe 4 et 5 paires de vie" => -2 pour chaque
+    // On peut s'inspirer de multipleTeamsRegex
+    {
+      const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
+      const multiPM = str.match(multiPairesRegex);
+      if (multiPM) {
+        // Ex: "4 et 5"
+        const teamsPart = multiPM[1];
+        // Paires => 2
+        const lifePart = 2;
+
+        saveState();
+        hideWinners();
+        stopAudioFadeOut();
+
+        const splitted = teamsPart.split(/\set\s+/i);
+        splitted.forEach(tp => {
+          let tid = tp.toLowerCase();
+          if (spelledNumbers[tid] !== undefined) {
+            tid = spelledNumbers[tid];
+          } else {
+            tid = parseInt(tid, 10);
+          }
+          if (!isNaN(tid)) {
+            players.forEach(p => {
+              if (p.team === tid && p.lives > 0) {
+                p.lives -= lifePart;
+                if (p.lives < 0) p.lives = 0;
+                showMinusLife(p.id, lifePart);
+              }
+            });
+          }
+        });
+        players.forEach(p => p.isWinner = false);
+
+        if (document.getElementById('teams-container').style.display !== 'none') {
+          renderTeamsUI();
+        } else {
+          renderPlayers();
+        }
+        applyTeamStylesIfVisible();
+        return;
+      }
+    }
+
+    // (D) On conserve le code existant (multipleTeamsRegex, single, etc.)
+    // === (1) "l'équipe X et Y perd une vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -973,7 +1056,7 @@
       return;
     }
 
-    // === (2) L'ÉQUIPE X PERD UNE VIE
+    // (E) "l'équipe X perd une vie" (simple)
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1014,7 +1097,7 @@
       }
     }
 
-    // === (3) L'ÉQUIPE X L'EMPORTE
+    // (F) "l'équipe X l'emporte" 
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
@@ -1031,7 +1114,7 @@
       return;
     }
 
-    // === (4) L'ÉQUIPE X ET Y PERDENT X VIES
+    // (G) "l'équipe X et Y perdent X vies" 
     if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
@@ -1080,12 +1163,11 @@
       return;
     }
 
-    // === (5) Les autres équipes perdent X vies
-    if (
-       str.includes('les autres équipes perdent') ||
-       str.includes('les autres équipes perdront') ||
-       str.includes('les autres équipes paires de vie')
-    ) {
+    // (H) "les autres équipes perdent X vies"
+    if (str.includes('les autres équipes perdent') ||
+        str.includes('les autres équipes perdront') ||
+        str.includes('les autres équipes paires de vie')) {
+
       saveState();
       hideWinners();
       stopAudioFadeOut();
@@ -1105,7 +1187,6 @@
           }
         }
       }
-
       const winnersTeams = new Set(players.filter(p => p.isWinner).map(p => p.team));
       players.forEach(p => {
         if (!winnersTeams.has(p.team) && p.lives > 0) {
@@ -1125,39 +1206,7 @@
       return;
     }
 
-    // === (6) punie/puni/punis moi le joueur X
-    if (
-      str.includes('punie moi le joueur') ||
-      str.includes('puni moi le joueur') ||
-      str.includes('punis moi le joueur')
-    ) {
-      const digits = str.match(/\d+/);
-      if (!digits) return;
-      const victimId = parseInt(digits[0], 10);
-      const victimPlayer = players.find(p => p.id === victimId);
-      if (!victimPlayer) return;
-      if (!victimPlayer.team) return;
-
-      saveState();
-      hideWinners();
-
-      if (victimPlayer.lives > 0) {
-        victimPlayer.lives -= 1;
-        if (victimPlayer.lives < 0) {
-          victimPlayer.lives = 0;
-        }
-      }
-
-      if (document.getElementById('teams-container').style.display !== 'none') {
-        renderTeamsUI();
-      } else {
-        renderPlayers();
-      }
-      applyTeamStylesIfVisible();
-      return;
-    }
-
-    // === Rien
+    // Rien
     console.log("Aucune commande reconnue pour:", str);
   }
 
