@@ -388,7 +388,10 @@
     lastPlayers = JSON.parse(JSON.stringify(players));
   }
   function undoAction() {
-    if (!lastPlayers) return;
+    if (!lastPlayers) {
+      console.warn("Aucune action à annuler");
+      return;
+    }
     players = JSON.parse(JSON.stringify(lastPlayers));
     hideWinners();
     if (document.getElementById('teams-container').style.display !== 'none') {
@@ -399,7 +402,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Transfert de vies
+  // === Transfert de vies (si besoin)
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -409,7 +412,7 @@
     receiver.lives += amount;
   }
 
-  // === Audio fade in/out
+  // === 2) Audio background fade in/out
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
@@ -509,7 +512,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Process Round
+  // === 5) Process Round
   function processRound() {
     saveState();
     hideWinners();
@@ -529,7 +532,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Reset
+  // === 6) Reset
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -547,7 +550,7 @@
     renderPlayers();
   }
 
-  // === Winners Overlay
+  // === 7) Winners Overlay
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -621,7 +624,7 @@
     }
   }
 
-  // === showMinusLife
+  // === 8) showMinusLife
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -801,6 +804,10 @@
   let isVoiceActive = false;
   let isCommandMode = false;
 
+  // On ajoute 'plus ni moins' / 'plus ni moi' pour "punie moi" => "punie" etc.
+  // On ajoute 'paires de devis' => 'paires de vie'
+  // On ajoute "l'équipe X perd une vie" / "l'équipe X perd de vie" => interpret as losing 2 ?
+
   const spelledNumbers = {
     'un': 1, 'une': 1,
     'deux': 2, 'de': 2,
@@ -808,8 +815,21 @@
     'cinq': 5, 'six': 6,
     'sept': 7, 'huit': 8,
     'neuf': 9, 'dix': 10,
-    'devis': 2, 'paires': 2
+    'devis': 2,         // paires de devis => 2
+    'paires': 2         // paires => 2
+    // (On a déjà 'paires' => 2, 'de' => 2, etc.)
   };
+
+  // Petites substitutions qu'on appliquera en amont pour mieux "matcher"
+  function synonymsSubstitutions(str) {
+    // "plus ni moins" => "punie"
+    str = str.replace(/plus ni moins/gi, "punie");
+    // "plus ni moi" => "punie"
+    str = str.replace(/plus ni moi/gi, "punie");
+    // "paires de devis" => "paires de vie"
+    str = str.replace(/paires de devis/gi, "paires de vie");
+    return str;
+  }
 
   function toggleVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window)) {
@@ -827,10 +847,14 @@
       recognition.onresult = (event) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const r = event.results[i];
-          const transcript = r[0].transcript.toLowerCase().trim();
+          let transcript = r[0].transcript.toLowerCase().trim();
+
           if (!r.isFinal) {
             // ...
           } else {
+            // On applique nos substitutions
+            transcript = synonymsSubstitutions(transcript);
+
             if (transcript.includes('activer')) isCommandMode = true;
             if (transcript.includes('désactiver')) isCommandMode = false;
             if (isCommandMode) {
@@ -864,6 +888,54 @@
       return;
     }
 
+    // === L'ÉQUIPE X PERD UNE VIE ou "perd de vie" => 2
+    // ex: "l'équipe 5 perd une vie"
+    // ex: "l'équipe 6 perd de vie" => "de" => 2
+    // On va faire un if
+    if (str.includes("l'équipe") && str.includes("perd")) {
+      // cherche "l'équipe X perd Y vie(s)"
+      // ex: /l'équipe (un|une|...) perd (un|une|deux|de|trois...|dix) vie/i
+      const re = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
+      const m = str.match(re);
+      if (m) {
+        let eq = m[1].toLowerCase(); // num de team
+        let v = m[2].toLowerCase();  // nb de vies
+        if (spelledNumbers[eq] !== undefined) {
+          eq = spelledNumbers[eq];
+        } else {
+          eq = parseInt(eq, 10);
+        }
+        if (spelledNumbers[v] !== undefined) {
+          v = spelledNumbers[v];
+        } else {
+          v = parseInt(v, 10);
+        }
+        if (!isNaN(eq) && !isNaN(v)) {
+          saveState();
+          hideWinners();
+          stopAudioFadeOut();
+          // On fait eq team -> - v vies
+          players.forEach(p => {
+            if (p.team === eq && p.lives > 0) {
+              p.lives -= v;
+              if (p.lives < 0) p.lives = 0;
+              showMinusLife(p.id, v);
+            }
+          });
+          // On annule winner
+          players.forEach(p => p.isWinner = false);
+
+          if (document.getElementById('teams-container').style.display !== 'none') {
+            renderTeamsUI();
+          } else {
+            renderPlayers();
+          }
+          applyTeamStylesIfVisible();
+          return;
+        }
+      }
+    }
+
     // === L'ÉQUIPE X L'EMPORTE
     if (
       ((str.includes("l'emporte") || str.includes("lampe porte")) &&
@@ -884,7 +956,7 @@
       return;
     }
 
-    // === "l'équipe une et deux perdent X vies" / "les équipes 3 et 4 perdent X vies"
+    // === "l'équipe une et deux perdent X vies"
     if (
       (str.includes("l'équipe") || str.includes("les équipes")) &&
       str.includes("perdent") &&
@@ -896,7 +968,6 @@
 
       // 1) Trouver la valeur X
       let val = 1;
-      // on cherche "... perdent (un|une|deux...) vies"
       const spelledRegex = /perdent\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vies/i;
       const spelledMatch = str.match(spelledRegex);
       if (spelledMatch && spelledMatch[1]) {
@@ -909,9 +980,7 @@
       }
 
       // 2) Trouver les équipes mentionnées avant "perdent"
-      // ex: "l'équipe une et deux perdent 3 vies"
-      // => on match "un|une|deux|..."
-      const teamsSection = str.split('perdent')[0]; // avant "perdent"
+      const teamsSection = str.split('perdent')[0];
       const teamMatches = teamsSection.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/gi);
       if (teamMatches && teamMatches.length > 0) {
         teamMatches.forEach(tm => {
@@ -922,7 +991,6 @@
             tid = parseInt(tid, 10);
           }
           if (!isNaN(tid)) {
-            // On enlève val vies à tous les players de l'équipe tid
             players.forEach(p => {
               if (p.team === tid && p.lives > 0) {
                 p.lives -= val;
@@ -933,11 +1001,9 @@
           }
         });
       }
-
-      // On met isWinner = false partout
+      // On annule isWinner
       players.forEach(p => p.isWinner = false);
 
-      // Réaffiche
       if (document.getElementById('teams-container').style.display !== 'none') {
         renderTeamsUI();
       } else {
@@ -992,7 +1058,8 @@
       return;
     }
 
-    // === "punie moi le joueur X"
+    // === punie/puni/punis moi le joueur X
+    // + "plus ni moins le joueur X" + "plus ni moi le joueur X" => déjà convertis par synonymsSubstitutions
     if (
       str.includes('punie moi le joueur') ||
       str.includes('puni moi le joueur') ||
@@ -1023,9 +1090,12 @@
       applyTeamStylesIfVisible();
       return;
     }
+
+    // === Sinon, pas de correspondance
+    console.log("Aucune commande reconnue pour:", str);
   }
 
-  // Démarrage initial
+  // Lancement initial
   renderPlayers();
 </script>
 </body>
