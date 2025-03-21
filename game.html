@@ -57,7 +57,7 @@
       height: 20px;
       background-color: red;
       border-radius: 50%;
-      display: none; /* caché par défaut */
+      display: none;
       animation: recBlink 1s infinite alternate;
       z-index: 999999;
     }
@@ -169,7 +169,6 @@
       border: 2px solid white;
       border-radius: 5px;
     }
-    /* "Vies" en Arial */
     .player-lives {
       font-family: Arial, sans-serif;
       font-size: 1.6rem;
@@ -347,17 +346,14 @@
 </head>
 <body>
 
-<!-- Logo client en haut à gauche -->
 <div id="logo-left">
   <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
 </div>
 
-<!-- Notre logo en haut à droite -->
 <div id="logo-right">
   <img src="https://ik.imagekit.io/lakolo/Animateur%20(1)%20(1)-Photoroom.png?updatedAt=1742542190414" alt="Notre Logo" class="logo" />
 </div>
 
-<!-- Indicateur commande vocale (rouge clignotant) -->
 <div id="rec-indicator"></div>
 
 <h1>
@@ -369,25 +365,19 @@
 </h1>
 <p>À qui le tour ?</p>
 
-<!-- Zone de gestion des équipes (en haut) -->
 <div id="teams-management">
   <input id="teams-input" type="number" placeholder="Nb équipes" min="1" />
   <button id="create-teams-btn" onclick="createTeams()">Créer les équipes</button>
   <button id="break-teams-btn" onclick="breakTeams()">Casser les équipes</button>
 </div>
 
-<!-- Overlay gagnants -->
 <div id="winners-overlay"></div>
 
-<!-- Overlay décompte (GIF + voix) -->
 <div id="countdown-overlay">
   <div id="countdown-number">3</div>
 </div>
 
-<!-- Container principal (joueurs) -->
 <div id="players-container"></div>
-
-<!-- Container final (équipes) -->
 <div id="teams-container"></div>
 
 <div class="buttons-container">
@@ -399,13 +389,10 @@
 </div>
 
 <script>
-  // === 0) Nombre de joueurs
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
-  // === 1) Players & snapshot for undo
   let players = Array.from({ length: numPlayers }, (_, i) => ({
-    // IMPORTANT: le nom des fichiers : "_AA1000{id}.JPG"
     id: i + 1,
     lives: 6,
     isWinner: false,
@@ -434,17 +421,12 @@
     applyTeamStylesIfVisible();
   }
 
-  // Indicateur commande vocale
   function updateCommandIndicator() {
     const el = document.getElementById('rec-indicator');
-    if (isCommandMode) {
-      el.style.display = 'block';
-    } else {
-      el.style.display = 'none';
-    }
+    if (isCommandMode) el.style.display = 'block';
+    else el.style.display = 'none';
   }
 
-  // Transfert de vies
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -454,7 +436,6 @@
     receiver.lives += amount;
   }
 
-  // Audio fade
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
@@ -487,11 +468,9 @@
     }, 200);
   }
 
-  // Chemin des photos, juste avant le suffixe
-  // => "_AA1000{id}.JPG"
+  // Préfixe d'URL. On concatène l'id puis ".JPG"
   const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
-  // Rendu joueurs
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -500,19 +479,19 @@
     players.forEach(p => {
       let cardClass = 'player-card';
       if (p.isWinner) cardClass += ' active';
-      if (p.lives <= 0) {
-        cardClass += ' no-lives';
-      } else if (p.lives <= 2) {
-        cardClass += ' low-lives';
-      }
+      if (p.lives <= 0) cardClass += ' no-lives';
+      else if (p.lives <= 2) cardClass += ' low-lives';
 
       const card = document.createElement('div');
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
 
-      // => "_AA10001.JPG" (si p.id=1)
       const img = document.createElement('img');
-      img.src = `${photoBasePrefix}${p.id}.JPG`; 
+      img.src = `${photoBasePrefix}${p.id}.JPG`;
+      // Si l'image ne se charge pas, on retire l'élément (pas d'icône de fichier manquant).
+      img.onerror = () => {
+        img.remove();
+      };
       img.style.width = '100%';
       img.style.height = '40%';
       img.style.objectFit = 'cover';
@@ -532,6 +511,7 @@
       container.appendChild(card);
     });
   }
+
   function toggleWinnerManually(pid) {
     saveState();
     const pl = players.find(x => x.id === pid);
@@ -544,18 +524,15 @@
     }
     applyTeamStylesIfVisible();
   }
+
   function toggleWinnerTeam(tid) {
     saveState();
-    players
-      .filter(p => p.team === tid)
-      .forEach(p => p.isWinner = true);
-
+    players.filter(p => p.team === tid).forEach(p => p.isWinner = true);
     renderTeamsUI();
     showWinners();
     applyTeamStylesIfVisible();
   }
 
-  // Process Round
   function processRound() {
     saveState();
     hideWinners();
@@ -575,7 +552,6 @@
     applyTeamStylesIfVisible();
   }
 
-  // Reset
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -588,12 +564,11 @@
     });
     currentTeams = [];
     currentNbTeams = 0;
-    document.getElementById('teams-container').innerHTML='';
-    document.getElementById('teams-container').style.display='none';
+    document.getElementById('teams-container').innerHTML = '';
+    document.getElementById('teams-container').style.display = 'none';
     renderPlayers();
   }
 
-  // Winners Overlay
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -649,22 +624,18 @@
     });
     ov.style.display = 'flex';
   }
+
   function hideWinners() {
     const ov = document.getElementById('winners-overlay');
     ov.innerHTML = '';
     ov.style.display = 'none';
     const pc = document.getElementById('players-container');
-    for (let c of pc.children) {
-      c.style.display = '';
-    }
+    for (let c of pc.children) c.style.display = '';
     const tc = document.getElementById('teams-container');
     const teamCards = tc.querySelectorAll('.player-card');
-    for (let card of teamCards) {
-      card.style.display = '';
-    }
+    for (let card of teamCards) card.style.display = '';
   }
 
-  // showMinusLife
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -698,7 +669,6 @@
     };
   }
 
-  // Équipes + Décompte
   function createTeams() {
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
@@ -711,6 +681,7 @@
       distributionEquipes(nbVal);
     });
   }
+
   function startCountdown(from, callback){
     const over = document.getElementById('countdown-overlay');
     const numEl= document.getElementById('countdown-number');
@@ -734,10 +705,10 @@
       }
     },1000);
   }
+
   function distributionEquipes(nbEquipes){
     currentNbTeams = nbEquipes;
     let arr=[...players];
-    // Shuffle (Fisher-Yates)
     for(let i= arr.length-1; i>0; i--){
       const j=Math.floor(Math.random()*(i+1));
       [arr[i], arr[j]]=[arr[j], arr[i]];
@@ -757,6 +728,7 @@
 
     renderTeamsUI();
   }
+
   function renderTeamsUI(){
     const tc= document.getElementById('teams-container');
     tc.innerHTML='';
@@ -780,17 +752,18 @@
         } else if(p.lives <= 2) {
           cardClass += ' low-lives';
         }
-        if(p.isWinner) {
-          cardClass += ' active';
-        }
+        if(p.isWinner) cardClass += ' active';
 
         const card = document.createElement('div');
         card.className=cardClass;
         card.onclick = () => toggleWinnerManually(p.id);
 
-        // On reprend le même pattern "_AA1000{id}.JPG"
         const img = document.createElement('img');
         img.src = `${photoBasePrefix}${p.id}.JPG`;
+        // Retirer l'img si elle ne charge pas
+        img.onerror = () => {
+          img.remove();
+        };
         img.style.width = '100%';
         img.style.height = '40%';
         img.style.objectFit = 'cover';
@@ -815,6 +788,7 @@
     });
     applyTeamStylesIfVisible();
   }
+
   function breakTeams(){
     const tc=document.getElementById('teams-container');
     tc.innerHTML='';
@@ -824,6 +798,7 @@
     currentNbTeams = 0;
     renderPlayers();
   }
+
   function applyTeamStylesIfVisible(){
     const tc = document.getElementById('teams-container');
     if (tc.style.display === 'none') return;
@@ -840,7 +815,6 @@
     });
   }
 
-  // === 9) Reconnaissance vocale
   let recognition = null;
   let isVoiceActive = false;
   let isCommandMode = false;
@@ -884,21 +858,20 @@
           let transcript = r[0].transcript.toLowerCase().trim();
 
           if (!r.isFinal) {
-            // ...
-          } else {
-            transcript = synonymsSubstitutions(transcript);
+            continue;
+          }
+          transcript = synonymsSubstitutions(transcript);
 
-            if (transcript.includes('activer')) {
-              isCommandMode = true;
-              updateCommandIndicator();
-            }
-            if (transcript.includes('désactiver')) {
-              isCommandMode = false;
-              updateCommandIndicator();
-            }
-            if (isCommandMode) {
-              handleVoiceResult(transcript);
-            }
+          if (transcript.includes('activer')) {
+            isCommandMode = true;
+            updateCommandIndicator();
+          }
+          if (transcript.includes('désactiver')) {
+            isCommandMode = false;
+            updateCommandIndicator();
+          }
+          if (isCommandMode) {
+            handleVoiceResult(transcript);
           }
         }
       };
@@ -927,6 +900,7 @@
       undoAction();
       return;
     }
+
     if (
       str.includes('punie le joueur') ||
       str.includes('punie moi le joueur') ||
@@ -955,6 +929,7 @@
       applyTeamStylesIfVisible();
       return;
     }
+
     {
       const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
       const multiPM = str.match(multiPairesRegex);
@@ -995,6 +970,8 @@
         return;
       }
     }
+
+    // "l'équipe X et Y perd une vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -1039,6 +1016,7 @@
       applyTeamStylesIfVisible();
       return;
     }
+
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1078,6 +1056,7 @@
         }
       }
     }
+
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
@@ -1093,6 +1072,7 @@
       }
       return;
     }
+
     if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
@@ -1140,6 +1120,7 @@
       applyTeamStylesIfVisible();
       return;
     }
+
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
@@ -1184,7 +1165,6 @@
     console.log("Aucune commande reconnue pour:", str);
   }
 
-  // Lancement initial
   renderPlayers();
 </script>
 </body>
