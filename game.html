@@ -34,7 +34,7 @@
       height: auto;
     }
 
-    /* Notre logo + X à droite */
+    /* Notre logo à droite */
     #logo-right {
       position: absolute;
       top: 10px;
@@ -47,12 +47,6 @@
       width: 150px;
       height: auto;
     }
-    #logo-right .feat-x {
-      font-size: 3rem;
-      font-weight: bold;
-      color: #ff3e68;
-      font-family: sans-serif;
-    }
 
     /* Indicateur REC (rouge clignotant) */
     #rec-indicator {
@@ -63,7 +57,7 @@
       height: 20px;
       background-color: red;
       border-radius: 50%;
-      display: none; 
+      display: none; /* caché par défaut */
       animation: recBlink 1s infinite alternate;
       z-index: 999999;
     }
@@ -358,7 +352,7 @@
   <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
 </div>
 
-<!-- Notre logo + X en haut à droite -->
+<!-- Notre logo en haut à droite -->
 <div id="logo-right">
   <img src="https://ik.imagekit.io/lakolo/Animateur%20(1)%20(1)-Photoroom.png?updatedAt=1742542190414" alt="Notre Logo" class="logo" />
 </div>
@@ -405,17 +399,13 @@
 </div>
 
 <script>
-  /****************************************************
-   * Code JS identique à votre version courante       *
-   * Seul le positionnement des logos a changé        *
-   ****************************************************/
-
   // === 0) Nombre de joueurs
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
   // === 1) Players & snapshot for undo
   let players = Array.from({ length: numPlayers }, (_, i) => ({
+    // Nom du fichier: "AA1.JPG", "AA2.JPG", etc.
     id: i + 1,
     lives: 6,
     isWinner: false,
@@ -499,7 +489,8 @@
   }
 
   // Chemin des photos
-  const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
+  // On utilise "AA1.JPG", "AA2.JPG", ...
+  const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/AA";
 
   // Rendu joueurs
   function renderPlayers() {
@@ -520,8 +511,9 @@
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
 
+      // Important : "AA{id}.JPG"
       const img = document.createElement('img');
-      img.src = `${photoBaseURL}${p.id}.jpg`;
+      img.src = `${photoBaseURL}${p.id}.JPG`;
       img.style.width = '100%';
       img.style.height = '40%';
       img.style.objectFit = 'cover';
@@ -799,8 +791,9 @@
         card.className=cardClass;
         card.onclick = () => toggleWinnerManually(p.id);
 
+        // Utilisation de "AA{id}.JPG"
         const img = document.createElement('img');
-        img.src = `${photoBaseURL}${p.id}.jpg`;
+        img.src = `${photoBaseURL}${p.id}.JPG`;
         img.style.width = '100%';
         img.style.height = '40%';
         img.style.objectFit = 'cover';
@@ -1121,7 +1114,7 @@
       return;
     }
 
-    // (G) "l'équipe X et Y perdent X vies" 
+    // (G) "l'équipe X et Y perdent X vies"
     if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
