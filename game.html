@@ -23,17 +23,17 @@
       padding: 20px;
     }
 
-    /* Conteneur pour les 2 logos + X, en haut à gauche */
+    /* Logos en haut à gauche */
     #logos-container {
       position: absolute;
       top: 10px;
       left: 10px;
       display: flex;
       align-items: center;
-      gap: 15px; /* Espace entre les éléments */
+      gap: 15px;
     }
     #logos-container .logo {
-      width: 100px; /* Taille plus grande */
+      width: 100px;
       height: auto;
     }
     #logos-container .feat-x {
@@ -269,7 +269,7 @@
       to   { transform: scale(1);   opacity: 1; }
     }
 
-    /* Overlay pour le décompte + GIF */
+    /* Overlay décompte + GIF */
     #countdown-overlay {
       display: none;
       position: fixed;
@@ -694,6 +694,7 @@
   function distributionEquipes(nbEquipes){
     currentNbTeams = nbEquipes;
     let arr=[...players];
+    // Shuffle
     for(let i= arr.length-1; i>0; i--){
       const j=Math.floor(Math.random()*(i+1));
       [arr[i], arr[j]]=[arr[j], arr[i]];
@@ -883,13 +884,11 @@
       return;
     }
 
-    // === "team une (et deux) perdent X vies"
-    // Exemple: "team un et deux perdent 3 vies"
-    // On parse toutes les équipes mentionnées, puis la valeur
+    // === "l'équipe une et deux perdent X vies" / "les équipes 3 et 4 perdent X vies"
     if (
-      str.includes('team') &&
-      str.includes('perdent') &&
-      str.includes('vies')
+      (str.includes("l'équipe") || str.includes("les équipes")) &&
+      str.includes("perdent") &&
+      str.includes("vies")
     ) {
       saveState();
       hideWinners();
@@ -897,6 +896,7 @@
 
       // 1) Trouver la valeur X
       let val = 1;
+      // on cherche "... perdent (un|une|deux...) vies"
       const spelledRegex = /perdent\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vies/i;
       const spelledMatch = str.match(spelledRegex);
       if (spelledMatch && spelledMatch[1]) {
@@ -909,15 +909,11 @@
       }
 
       // 2) Trouver les équipes mentionnées avant "perdent"
-      // On peut chercher toutes les occurrences "un/une/deux/..." ou \d+ après "team"
-      // ex: "team un et deux perdent 3 vies"
-      // => on fait un match global:
-      const teamsSection = str.split('perdent')[0]; // la partie avant "perdent"
-      // On cherche des nombres ou mots dans "teamsSection"
+      // ex: "l'équipe une et deux perdent 3 vies"
+      // => on match "un|une|deux|..."
+      const teamsSection = str.split('perdent')[0]; // avant "perdent"
       const teamMatches = teamsSection.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/gi);
-
       if (teamMatches && teamMatches.length > 0) {
-        // Pour chacune, on retire X vies à la team correspondante
         teamMatches.forEach(tm => {
           let tid = tm.toLowerCase();
           if (spelledNumbers[tid] !== undefined) {
@@ -926,7 +922,7 @@
             tid = parseInt(tid, 10);
           }
           if (!isNaN(tid)) {
-            // On applique -val vies à tous les players de l'équipe tid
+            // On enlève val vies à tous les players de l'équipe tid
             players.forEach(p => {
               if (p.team === tid && p.lives > 0) {
                 p.lives -= val;
@@ -937,10 +933,11 @@
           }
         });
       }
-      // Annule tout winner
+
+      // On met isWinner = false partout
       players.forEach(p => p.isWinner = false);
 
-      // On réaffiche
+      // Réaffiche
       if (document.getElementById('teams-container').style.display !== 'none') {
         renderTeamsUI();
       } else {
@@ -1013,7 +1010,9 @@
 
       if (victimPlayer.lives > 0) {
         victimPlayer.lives -= 1;
-        if (victimPlayer.lives < 0) victimPlayer.lives = 0;
+        if (victimPlayer.lives < 0) {
+          victimPlayer.lives = 0;
+        }
       }
 
       if (document.getElementById('teams-container').style.display !== 'none') {
@@ -1026,7 +1025,7 @@
     }
   }
 
-  // Lancement initial
+  // Démarrage initial
   renderPlayers();
 </script>
 </body>
