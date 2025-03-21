@@ -23,27 +23,38 @@
       padding: 20px;
     }
 
-    /* Logos en haut à droite (plus grands) */
-    #logos-container {
+    /* Logo du client à gauche */
+    #logo-left {
       position: absolute;
       top: 10px;
-      right: 10px; /* On déplace à droite */
+      left: 10px;
+    }
+    #logo-left .logo {
+      width: 150px;
+      height: auto;
+    }
+
+    /* Notre logo + X à droite */
+    #logo-right {
+      position: absolute;
+      top: 10px;
+      right: 10px;
       display: flex;
       align-items: center;
       gap: 15px;
     }
-    #logos-container .logo {
-      width: 150px; /* On agrandit la taille */
+    #logo-right .logo {
+      width: 150px;
       height: auto;
     }
-    #logos-container .feat-x {
+    #logo-right .feat-x {
       font-size: 3rem;
       font-weight: bold;
       color: #ff3e68;
       font-family: sans-serif;
     }
 
-    /* Indicateur REC (rouge clignotant) : on l'affiche seulement si commande vocale active */
+    /* Indicateur REC (rouge clignotant) */
     #rec-indicator {
       position: fixed;
       top: 80px;
@@ -52,7 +63,7 @@
       height: 20px;
       background-color: red;
       border-radius: 50%;
-      display: none; /* caché par défaut */
+      display: none; 
       animation: recBlink 1s infinite alternate;
       z-index: 999999;
     }
@@ -164,7 +175,7 @@
       border: 2px solid white;
       border-radius: 5px;
     }
-    /* On place la police Arial seulement pour "Vies" */
+    /* "Vies" en Arial */
     .player-lives {
       font-family: Arial, sans-serif;
       font-size: 1.6rem;
@@ -342,11 +353,15 @@
 </head>
 <body>
 
-<!-- Logos en haut à droite -->
-<div id="logos-container">
-  <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
+<!-- Logo client en haut à gauche -->
+<div id="logo-left">
+  <img src="LOGO_CLIENT.png" alt="Logo Client" class="logo" />
+</div>
+
+<!-- Notre logo + X en haut à droite -->
+<div id="logo-right">
   <span class="feat-x">X</span>
-  <img src="https://ik.imagekit.io/lakolo/Animateur%20(1)%20(1)-Photoroom.png?updatedAt=1742542190414" alt="Notre Logo" class="logo" />
+  <img src="NOTRE_LOGO.png" alt="Notre Logo" class="logo" />
 </div>
 
 <!-- Indicateur commande vocale (rouge clignotant) -->
@@ -391,6 +406,11 @@
 </div>
 
 <script>
+  /****************************************************
+   * Code JS identique à votre version courante       *
+   * Seul le positionnement des logos a changé        *
+   ****************************************************/
+
   // === 0) Nombre de joueurs
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
@@ -844,7 +864,7 @@
     'cinq': 5, 'six': 6,
     'sept': 7, 'huit': 8,
     'neuf': 9, 'dix': 10,
-    'devis': 2,    // "paires de devis"
+    'devis': 2,
     'paires': 2
   };
 
@@ -911,15 +931,12 @@
     } else {
       isVoiceActive = false;
       recognition.stop();
-      // On coupe la commande
       isCommandMode = false;
       updateCommandIndicator();
-
       vb.textContent = "Activer la Reconnaissance Vocale";
     }
   }
 
-  // Gère l'analyse des commandes
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
 
@@ -929,8 +946,7 @@
       return;
     }
 
-    // (B) punie/puni/punis "le joueur X" => retire 1 vie au joueur X
-    // On fusionne avec "punie moi le joueur X", etc.
+    // (B) punie/puni/punis "le joueur X"
     if (
       str.includes('punie le joueur') ||
       str.includes('punie moi le joueur') ||
@@ -939,21 +955,17 @@
       str.includes('punis le joueur') ||
       str.includes('punis moi le joueur')
     ) {
-      // On cherche un nombre => l'id du joueur
       const digits = str.match(/\d+/);
       if (!digits) return;
       const victimId = parseInt(digits[0], 10);
       const victimPlayer = players.find(p => p.id === victimId);
       if (!victimPlayer) return;
-      // On retire 1 vie direct
+
       saveState();
       hideWinners();
-
       if (victimPlayer.lives > 0) {
         victimPlayer.lives -= 1;
-        if (victimPlayer.lives < 0) {
-          victimPlayer.lives = 0;
-        }
+        if (victimPlayer.lives < 0) victimPlayer.lives = 0;
       }
       if (document.getElementById('teams-container').style.display !== 'none') {
         renderTeamsUI();
@@ -964,15 +976,12 @@
       return;
     }
 
-    // (C) "l'équipe X et Y paires de vie" => ex: "l'équipe 4 et 5 paires de vie" => -2 pour chaque
-    // On peut s'inspirer de multipleTeamsRegex
+    // (C) "l'équipe X et Y paires de vie" => -2
     {
       const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
       const multiPM = str.match(multiPairesRegex);
       if (multiPM) {
-        // Ex: "4 et 5"
         const teamsPart = multiPM[1];
-        // Paires => 2
         const lifePart = 2;
 
         saveState();
@@ -1009,8 +1018,7 @@
       }
     }
 
-    // (D) On conserve le code existant (multipleTeamsRegex, single, etc.)
-    // === (1) "l'équipe X et Y perd une vie"
+    // (D) "l'équipe X et Y perd une vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -1056,7 +1064,7 @@
       return;
     }
 
-    // (E) "l'équipe X perd une vie" (simple)
+    // (E) "l'équipe X perd une vie"
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1097,7 +1105,7 @@
       }
     }
 
-    // (F) "l'équipe X l'emporte" 
+    // (F) "l'équipe X l'emporte"
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
@@ -1167,7 +1175,6 @@
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
-
       saveState();
       hideWinners();
       stopAudioFadeOut();
