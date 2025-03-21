@@ -23,17 +23,17 @@
       padding: 20px;
     }
 
-    /* Logos en haut à gauche */
+    /* Logos en haut à droite (plus grands) */
     #logos-container {
       position: absolute;
       top: 10px;
-      left: 10px;
+      right: 10px; /* On déplace à droite */
       display: flex;
       align-items: center;
       gap: 15px;
     }
     #logos-container .logo {
-      width: 100px;
+      width: 150px; /* On agrandit la taille */
       height: auto;
     }
     #logos-container .feat-x {
@@ -41,6 +41,24 @@
       font-weight: bold;
       color: #ff3e68;
       font-family: sans-serif;
+    }
+
+    /* Indicateur REC (rouge clignotant) : on l'affiche seulement si commande vocale active */
+    #rec-indicator {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 20px;
+      height: 20px;
+      background-color: red;
+      border-radius: 50%;
+      display: none; /* caché par défaut */
+      animation: recBlink 1s infinite alternate;
+      z-index: 999999;
+    }
+    @keyframes recBlink {
+      0%   { opacity: 0.3; }
+      100% { opacity: 1;   }
     }
 
     h1 {
@@ -146,7 +164,9 @@
       border: 2px solid white;
       border-radius: 5px;
     }
+    /* On place la police Arial seulement pour "Vies" */
     .player-lives {
+      font-family: Arial, sans-serif;
       font-size: 1.6rem;
       color: white;
       margin-top: 5px;
@@ -322,12 +342,15 @@
 </head>
 <body>
 
-<!-- Logos + X en haut à gauche -->
+<!-- Logos en haut à droite -->
 <div id="logos-container">
   <img src="LOGO_CLIENT.png" alt="Logo Client" class="logo" />
   <span class="feat-x">X</span>
   <img src="NOTRE_LOGO.png" alt="Notre Logo" class="logo" />
 </div>
+
+<!-- Indicateur commande vocale (rouge clignotant) -->
+<div id="rec-indicator" style="display: none;"></div>
 
 <h1>
   <span>SQUID</span>
@@ -368,7 +391,7 @@
 </div>
 
 <script>
-  // === 0) Récupération du nombre de joueurs
+  // === 0) Nombre de joueurs
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
@@ -402,7 +425,17 @@
     applyTeamStylesIfVisible();
   }
 
-  // === Transfert de vies (si besoin)
+  // === Indicateur rouge clignotant (REC) pour commande vocale
+  function updateCommandIndicator() {
+    const el = document.getElementById('rec-indicator');
+    if (isCommandMode) {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // === Transfert (si besoin)
   function transferLives(donorId, receiverId, amount) {
     const donor = players.find(p => p.id === donorId);
     const receiver = players.find(p => p.id === receiverId);
@@ -445,10 +478,9 @@
     }, 200);
   }
 
-  // Chemin des photos
   const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/";
 
-  // === Rendu joueurs (sans équipe)
+  // === Rendu joueurs
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -512,7 +544,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === 5) Process Round
+  // === Process Round
   function processRound() {
     saveState();
     hideWinners();
@@ -532,7 +564,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // === 6) Reset
+  // === Reset
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
@@ -550,7 +582,7 @@
     renderPlayers();
   }
 
-  // === 7) Winners Overlay
+  // === Winners Overlay
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -624,7 +656,7 @@
     }
   }
 
-  // === 8) showMinusLife
+  // === showMinusLife
   function showMinusLife(pid, lostValue) {
     const pc = document.getElementById('players-container');
     if (pc.style.display === 'none') return;
@@ -804,10 +836,7 @@
   let isVoiceActive = false;
   let isCommandMode = false;
 
-  // On ajoute 'plus ni moins' / 'plus ni moi' pour "punie moi" => "punie" etc.
-  // On ajoute 'paires de devis' => 'paires de vie'
-  // On ajoute "l'équipe X perd une vie" / "l'équipe X perd de vie" => interpret as losing 2 ?
-
+  // Dictionnaire
   const spelledNumbers = {
     'un': 1, 'une': 1,
     'deux': 2, 'de': 2,
@@ -815,19 +844,16 @@
     'cinq': 5, 'six': 6,
     'sept': 7, 'huit': 8,
     'neuf': 9, 'dix': 10,
-    'devis': 2,         // paires de devis => 2
-    'paires': 2         // paires => 2
-    // (On a déjà 'paires' => 2, 'de' => 2, etc.)
+    'devis': 2,
+    'paires': 2
   };
 
-  // Petites substitutions qu'on appliquera en amont pour mieux "matcher"
   function synonymsSubstitutions(str) {
-    // "plus ni moins" => "punie"
     str = str.replace(/plus ni moins/gi, "punie");
-    // "plus ni moi" => "punie"
     str = str.replace(/plus ni moi/gi, "punie");
-    // "paires de devis" => "paires de vie"
     str = str.replace(/paires de devis/gi, "paires de vie");
+    str = str.replace(/\bl'équipe de\b/gi, "l'équipe 2");
+    str = str.replace(/\bpère\b/gi, "perd");
     return str;
   }
 
@@ -852,11 +878,16 @@
           if (!r.isFinal) {
             // ...
           } else {
-            // On applique nos substitutions
             transcript = synonymsSubstitutions(transcript);
 
-            if (transcript.includes('activer')) isCommandMode = true;
-            if (transcript.includes('désactiver')) isCommandMode = false;
+            if (transcript.includes('activer')) {
+              isCommandMode = true;
+              updateCommandIndicator(); // Montre le rond rouge
+            }
+            if (transcript.includes('désactiver')) {
+              isCommandMode = false;
+              updateCommandIndicator(); // Cache le rond rouge
+            }
             if (isCommandMode) {
               handleVoiceResult(transcript);
             }
@@ -875,31 +906,80 @@
     } else {
       isVoiceActive = false;
       recognition.stop();
+      // On coupe la commande
+      isCommandMode = false;
+      updateCommandIndicator();
+
       vb.textContent = "Activer la Reconnaissance Vocale";
+    }
+  }
+
+  function updateCommandIndicator() {
+    const el = document.getElementById('rec-indicator');
+    if (isCommandMode) {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
     }
   }
 
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
 
-    // "retour"
-    if (str.includes('retour')) {
-      undoAction();
+    // (Vos commandes vocales déjà gérées)
+    // === (1) L'ÉQUIPE X ET Y PERD/ENT UNE VIE
+    const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
+    const multiMatches = str.match(multipleTeamsRegex);
+    if (multiMatches) {
+      const teamsPart = multiMatches[1];
+      let lifePart = multiMatches[2];
+      if (spelledNumbers[lifePart] !== undefined) {
+        lifePart = spelledNumbers[lifePart];
+      } else {
+        lifePart = parseInt(lifePart, 10);
+      }
+      if (isNaN(lifePart)) lifePart = 1;
+
+      saveState();
+      hideWinners();
+      stopAudioFadeOut();
+
+      const splitted = teamsPart.split(/\set\s+/i);
+      splitted.forEach(tp => {
+        let tid = tp.toLowerCase();
+        if (spelledNumbers[tid] !== undefined) {
+          tid = spelledNumbers[tid];
+        } else {
+          tid = parseInt(tid, 10);
+        }
+        if (!isNaN(tid)) {
+          players.forEach(p => {
+            if (p.team === tid && p.lives > 0) {
+              p.lives -= lifePart;
+              if (p.lives < 0) p.lives = 0;
+              showMinusLife(p.id, lifePart);
+            }
+          });
+        }
+      });
+      players.forEach(p => p.isWinner = false);
+
+      if (document.getElementById('teams-container').style.display !== 'none') {
+        renderTeamsUI();
+      } else {
+        renderPlayers();
+      }
+      applyTeamStylesIfVisible();
       return;
     }
 
-    // === L'ÉQUIPE X PERD UNE VIE ou "perd de vie" => 2
-    // ex: "l'équipe 5 perd une vie"
-    // ex: "l'équipe 6 perd de vie" => "de" => 2
-    // On va faire un if
-    if (str.includes("l'équipe") && str.includes("perd")) {
-      // cherche "l'équipe X perd Y vie(s)"
-      // ex: /l'équipe (un|une|...) perd (un|une|deux|de|trois...|dix) vie/i
-      const re = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
-      const m = str.match(re);
-      if (m) {
-        let eq = m[1].toLowerCase(); // num de team
-        let v = m[2].toLowerCase();  // nb de vies
+    // === (2) L'ÉQUIPE X PERD UNE VIE
+    {
+      const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
+      const mSingle = str.match(reSingle);
+      if (mSingle) {
+        let eq = mSingle[1].toLowerCase();
+        let v = mSingle[2].toLowerCase();
         if (spelledNumbers[eq] !== undefined) {
           eq = spelledNumbers[eq];
         } else {
@@ -914,7 +994,6 @@
           saveState();
           hideWinners();
           stopAudioFadeOut();
-          // On fait eq team -> - v vies
           players.forEach(p => {
             if (p.team === eq && p.lives > 0) {
               p.lives -= v;
@@ -922,7 +1001,6 @@
               showMinusLife(p.id, v);
             }
           });
-          // On annule winner
           players.forEach(p => p.isWinner = false);
 
           if (document.getElementById('teams-container').style.display !== 'none') {
@@ -936,11 +1014,8 @@
       }
     }
 
-    // === L'ÉQUIPE X L'EMPORTE
-    if (
-      ((str.includes("l'emporte") || str.includes("lampe porte")) &&
-       str.includes("l'équipe"))
-    ) {
+    // === (3) L'ÉQUIPE X L'EMPORTE
+    if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
         let val = matchTeam[1].toLowerCase();
@@ -956,17 +1031,12 @@
       return;
     }
 
-    // === "l'équipe une et deux perdent X vies"
-    if (
-      (str.includes("l'équipe") || str.includes("les équipes")) &&
-      str.includes("perdent") &&
-      str.includes("vies")
-    ) {
+    // === (4) L'ÉQUIPE X ET Y PERDENT X VIES
+    if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
       stopAudioFadeOut();
 
-      // 1) Trouver la valeur X
       let val = 1;
       const spelledRegex = /perdent\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vies/i;
       const spelledMatch = str.match(spelledRegex);
@@ -978,8 +1048,6 @@
           val = parseInt(rawVal, 10);
         }
       }
-
-      // 2) Trouver les équipes mentionnées avant "perdent"
       const teamsSection = str.split('perdent')[0];
       const teamMatches = teamsSection.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/gi);
       if (teamMatches && teamMatches.length > 0) {
@@ -1001,7 +1069,6 @@
           }
         });
       }
-      // On annule isWinner
       players.forEach(p => p.isWinner = false);
 
       if (document.getElementById('teams-container').style.display !== 'none') {
@@ -1013,7 +1080,7 @@
       return;
     }
 
-    // === Les autres équipes perdent X vies
+    // === (5) Les autres équipes perdent X vies
     if (
        str.includes('les autres équipes perdent') ||
        str.includes('les autres équipes perdront') ||
@@ -1058,8 +1125,7 @@
       return;
     }
 
-    // === punie/puni/punis moi le joueur X
-    // + "plus ni moins le joueur X" + "plus ni moi le joueur X" => déjà convertis par synonymsSubstitutions
+    // === (6) punie/puni/punis moi le joueur X
     if (
       str.includes('punie moi le joueur') ||
       str.includes('puni moi le joueur') ||
@@ -1091,11 +1157,11 @@
       return;
     }
 
-    // === Sinon, pas de correspondance
+    // === Rien
     console.log("Aucune commande reconnue pour:", str);
   }
 
-  // Lancement initial
+  // Démarrage initial
   renderPlayers();
 </script>
 </body>
