@@ -405,7 +405,7 @@
 
   // === 1) Players & snapshot for undo
   let players = Array.from({ length: numPlayers }, (_, i) => ({
-    // Nom du fichier: "AA1.JPG", "AA2.JPG", etc.
+    // IMPORTANT: le nom des fichiers : "_AA1000{id}.JPG"
     id: i + 1,
     lives: 6,
     isWinner: false,
@@ -416,7 +416,6 @@
   let currentNbTeams = 0;
   let currentTeams = [];
 
-  // Snapshot
   function saveState() {
     lastPlayers = JSON.parse(JSON.stringify(players));
   }
@@ -435,7 +434,7 @@
     applyTeamStylesIfVisible();
   }
 
-  // Indicateur rouge clignotant
+  // Indicateur commande vocale
   function updateCommandIndicator() {
     const el = document.getElementById('rec-indicator');
     if (isCommandMode) {
@@ -488,9 +487,9 @@
     }, 200);
   }
 
-  // Chemin des photos
-  // On utilise "AA1.JPG", "AA2.JPG", ...
-  const photoBaseURL = "https://github.com/Magicarpe1/Squid-game/raw/main/images/AA";
+  // Chemin des photos, juste avant le suffixe
+  // => "_AA1000{id}.JPG"
+  const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
   // Rendu joueurs
   function renderPlayers() {
@@ -511,9 +510,9 @@
       card.className = cardClass;
       card.onclick = () => toggleWinnerManually(p.id);
 
-      // Important : "AA{id}.JPG"
+      // => "_AA10001.JPG" (si p.id=1)
       const img = document.createElement('img');
-      img.src = `${photoBaseURL}${p.id}.JPG`;
+      img.src = `${photoBasePrefix}${p.id}.JPG`; 
       img.style.width = '100%';
       img.style.height = '40%';
       img.style.objectFit = 'cover';
@@ -603,7 +602,6 @@
       ov.style.display = 'none';
       return;
     }
-    // Cache cartes
     const pc = document.getElementById('players-container');
     if (pc.style.display !== 'none') {
       for (let c of pc.children) {
@@ -655,7 +653,6 @@
     const ov = document.getElementById('winners-overlay');
     ov.innerHTML = '';
     ov.style.display = 'none';
-    // Réaffiche
     const pc = document.getElementById('players-container');
     for (let c of pc.children) {
       c.style.display = '';
@@ -791,9 +788,9 @@
         card.className=cardClass;
         card.onclick = () => toggleWinnerManually(p.id);
 
-        // Utilisation de "AA{id}.JPG"
+        // On reprend le même pattern "_AA1000{id}.JPG"
         const img = document.createElement('img');
-        img.src = `${photoBaseURL}${p.id}.JPG`;
+        img.src = `${photoBasePrefix}${p.id}.JPG`;
         img.style.width = '100%';
         img.style.height = '40%';
         img.style.objectFit = 'cover';
@@ -848,7 +845,6 @@
   let isVoiceActive = false;
   let isCommandMode = false;
 
-  // On élargit spelledNumbers pour inclure "paires" => 2, "de" => 2, "devis" => 2...
   const spelledNumbers = {
     'un': 1, 'une': 1,
     'deux': 2, 'de': 2,
@@ -860,15 +856,10 @@
     'paires': 2
   };
 
-  // Substitutions pour mieux matcher
   function synonymsSubstitutions(str) {
-    // "plus ni moins" -> "punie"
     str = str.replace(/plus ni moins/gi, "punie");
-    // "plus ni moi" -> "punie"
     str = str.replace(/plus ni moi/gi, "punie");
-    // "paires de devis" -> "paires de vie"
     str = str.replace(/paires de devis/gi, "paires de vie");
-    // "et l'équipe de père une vie" -> "et l'équipe 2 perd une vie"
     str = str.replace(/\bl'équipe de\b/gi, "l'équipe 2");
     str = str.replace(/\bpère\b/gi, "perd");
     return str;
@@ -899,11 +890,11 @@
 
             if (transcript.includes('activer')) {
               isCommandMode = true;
-              updateCommandIndicator(); // Montre le rond rouge
+              updateCommandIndicator();
             }
             if (transcript.includes('désactiver')) {
               isCommandMode = false;
-              updateCommandIndicator(); // Cache le rond rouge
+              updateCommandIndicator();
             }
             if (isCommandMode) {
               handleVoiceResult(transcript);
@@ -932,13 +923,10 @@
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
 
-    // (A) "retour"
     if (str.includes('retour')) {
       undoAction();
       return;
     }
-
-    // (B) punie/puni/punis "le joueur X"
     if (
       str.includes('punie le joueur') ||
       str.includes('punie moi le joueur') ||
@@ -967,8 +955,6 @@
       applyTeamStylesIfVisible();
       return;
     }
-
-    // (C) "l'équipe X et Y paires de vie" => -2
     {
       const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
       const multiPM = str.match(multiPairesRegex);
@@ -1009,8 +995,6 @@
         return;
       }
     }
-
-    // (D) "l'équipe X et Y perd une vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -1055,8 +1039,6 @@
       applyTeamStylesIfVisible();
       return;
     }
-
-    // (E) "l'équipe X perd une vie"
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1096,8 +1078,6 @@
         }
       }
     }
-
-    // (F) "l'équipe X l'emporte"
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
@@ -1113,8 +1093,6 @@
       }
       return;
     }
-
-    // (G) "l'équipe X et Y perdent X vies"
     if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
@@ -1162,8 +1140,6 @@
       applyTeamStylesIfVisible();
       return;
     }
-
-    // (H) "les autres équipes perdent X vies"
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
@@ -1205,11 +1181,10 @@
       return;
     }
 
-    // Rien
     console.log("Aucune commande reconnue pour:", str);
   }
 
-  // Démarrage initial
+  // Lancement initial
   renderPlayers();
 </script>
 </body>
