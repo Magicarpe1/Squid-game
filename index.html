@@ -67,20 +67,33 @@
   <button onclick="startGame()">Commencer</button>
 
   <script>
-    // Permet de prévisualiser le logo choisi
+    // Récupération des éléments du DOM
     const logoFileInput = document.getElementById('logoFile');
     const clientLogoImg = document.getElementById('clientLogo');
 
+    // Écoute le changement de fichier
     logoFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) {
         clientLogoImg.style.display = 'none';
+        // Si aucun fichier, on vide éventuellement le localStorage
+        localStorage.removeItem('clientLogo');
         return;
       }
-      // On crée un "blob URL" pour prévisualiser l'image
-      const url = URL.createObjectURL(file);
-      clientLogoImg.src = url;
-      clientLogoImg.style.display = 'block';
+
+      // On va lire le fichier en base64 (data URL)
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        // event.target.result contient la chaîne base64
+        const base64Image = event.target.result;
+        // On l'affiche tout de suite
+        clientLogoImg.src = base64Image;
+        clientLogoImg.style.display = 'block';
+
+        // On enregistre dans localStorage pour que la page game.html puisse le réutiliser
+        localStorage.setItem('clientLogo', base64Image);
+      };
+      reader.readAsDataURL(file);
     });
 
     function startGame() {
@@ -90,6 +103,7 @@
         return;
       }
       // Redirige vers la page du jeu
+      // Ajout param players dans l'URL
       window.location.href = 'game.html?players=' + numPlayers;
     }
   </script>
