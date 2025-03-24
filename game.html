@@ -434,12 +434,12 @@
     <small>Équivaut à dire « punie le joueur X »</small>
   </div>
 
-  <!-- 3) L'équipe X l'emporte -->
+  <!-- 3) L'équipe / Les équipes gagnent -->
   <div class="command-block">
-    <label for="team-winner-id">L'équipe gagne :</label>
-    <input type="text" id="team-winner-id" placeholder="ex: 2" />
-    <button onclick="manualEquipeGagne()">Valider</button>
-    <small>Équivaut à « l'équipe 2 l'emporte »</small>
+    <label>Équipe(s) gagnante(s) :</label>
+    <input type="text" id="multiple-winners-id" placeholder="ex : 2  ou  2 et 3" />
+    <button onclick="manualMultiWinners()">Valider</button>
+    <small>Ex : « l'équipe 2 l'emporte » ou « les équipes 2 et 3 l'emportent »</small>
   </div>
 
   <!-- 4) L'équipe X et Y perd N vie -->
@@ -493,7 +493,7 @@
     team: null
   }));
 
-  // Au lieu d'un seul lastPlayers, on stocke tout l'historique
+  // Au lieu d'un seul lastPlayers, on stocke tout l'historique (pile)
   let undoStack = [];
 
   // On pousse l'état initial
@@ -503,7 +503,7 @@
   let currentTeams = [];
 
   function saveState() {
-    // On empile un nouveau clone dans la pile
+    // Empile un nouveau clone dans la pile
     undoStack.push(JSON.parse(JSON.stringify(players)));
   }
 
@@ -1051,7 +1051,54 @@
       return;
     }
 
-    // 3) "l'équipe X et Y paires de vie" => -2 vies
+    // 3) Plusieurs équipes gagnent : "l'équipe X et Y l'emporte(nt)" ou "les équipes X et Y l'emportent"
+    {
+      // On capture "l'équipe" ou "les équipes"
+      // puis X et Y et Z (group 1), 
+      // puis "l'emporte" ou "l'emportent"
+      const multiWinnersRegex = /(?:l'équipe|les équipes)\s+((?:un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+l'emporte(?:nt)?/i;
+      const multiMatch = str.match(multiWinnersRegex);
+      if (multiMatch) {
+        const teamsPart = multiMatch[1]; // ex: "2 et 3"
+        stopAudioFadeOut();
+        playAudioFadeIn();
+
+        // On sépare sur " et "
+        const splitted = teamsPart.split(/\set\s+/i);
+        saveState();
+
+        // Pour chaque équipe mentionnée
+        splitted.forEach(tp => {
+          let tid = tp.toLowerCase();
+          if (spelledNumbers[tid] !== undefined) {
+            tid = spelledNumbers[tid];
+          } else {
+            tid = parseInt(tid, 10);
+          }
+          if (!isNaN(tid)) {
+            // Marquer tous les joueurs de cette team en winner
+            if (currentNbTeams > 0) {
+              // Mode équipes
+              players.filter(p => p.team === tid).forEach(p => p.isWinner = true);
+            }
+          }
+        });
+
+        // Si on est en mode équipes, on fait apparaitre les winners
+        if (currentNbTeams > 0) {
+          renderTeamsUI();
+          showWinners();
+        } else {
+          // S'il n'y a pas d'équipes, la notion "équipe X" n'a pas de sens
+          // (vous pouvez gérer autrement si besoin)
+          console.warn("Il n'y a pas d'équipes créées, ignore la commande");
+        }
+        applyTeamStylesIfVisible();
+        return;
+      }
+    }
+
+    // 4) "l'équipe X et Y paires de vie" => -2 vies
     {
       const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
       const multiPM = str.match(multiPairesRegex);
@@ -1093,7 +1140,7 @@
       }
     }
 
-    // 4) "l'équipe X et Y perd N vie"
+    // 5) "l'équipe X et Y perd N vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -1139,7 +1186,7 @@
       return;
     }
 
-    // 5) "l'équipe X perd Y vie"
+    // 6) "l'équipe X perd Y vie" (cas simple)
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1180,9 +1227,13 @@
       }
     }
 
-    // 6) "l'équipe X l'emporte"
+    // 7) "l'équipe X l'emporte" (cas isolé) => pour 1 équipe
+    // (Mais on vient de gérer le cas multiple. On gère donc le single ici si besoin)
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
-      const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
+      // On vérifie d'abord si c'était déjà pris en charge par le multi (au cas où).
+      // Dans le code actuel, le multi a un "return" si ça matche,
+      // donc si on arrive ici, c'est forcément 1 seule équipe.
+      const matchTeam = str.match(/l'équipe (un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
         let val = matchTeam[1].toLowerCase();
         if (spelledNumbers[val] !== undefined) {
@@ -1192,61 +1243,20 @@
         }
         stopAudioFadeOut();
         playAudioFadeIn();
-        toggleWinnerTeam(val);
-      }
-      return;
-    }
-
-    // 7) "l'équipe X Y perdent Z vies"
-    if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
-      saveState();
-      hideWinners();
-      stopAudioFadeOut();
-
-      let val = 1;
-      const spelledRegex = /perdent\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vies/i;
-      const spelledMatch = str.match(spelledRegex);
-      if (spelledMatch && spelledMatch[1]) {
-        let rawVal = spelledMatch[1].toLowerCase();
-        if (spelledNumbers[rawVal] !== undefined) {
-          val = spelledNumbers[rawVal];
-        } else {
-          val = parseInt(rawVal, 10);
-        }
-      }
-      const teamsSection = str.split('perdent')[0];
-      const teamMatches = teamsSection.match(/\b(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\b/gi);
-      if (teamMatches && teamMatches.length > 0) {
-        teamMatches.forEach(tm => {
-          let tid = tm.toLowerCase();
-          if (spelledNumbers[tid] !== undefined) {
-            tid = spelledNumbers[tid];
-          } else {
-            tid = parseInt(tid, 10);
-          }
-          if (!isNaN(tid)) {
-            players.forEach(p => {
-              if (p.team === tid && p.lives > 0) {
-                p.lives -= val;
-                if (p.lives < 0) p.lives = 0;
-                showMinusLife(p.id, val);
-              }
-            });
-          }
-        });
-      }
-      players.forEach(p => p.isWinner = false);
-
-      if (document.getElementById('teams-container').style.display !== 'none') {
+        // On applique la même logique
+        saveState();
+        // Marque tous les joueurs de l'équipe "val" en isWinner
+        players.filter(p => p.team === val).forEach(p => p.isWinner = true);
         renderTeamsUI();
-      } else {
-        renderPlayers();
+        showWinners();
+        applyTeamStylesIfVisible();
       }
-      applyTeamStylesIfVisible();
       return;
     }
 
-    // 8) "les autres équipes perdent/perdront X vies" ou "paires de vie"
+    // 8) "l'équipe X Y perdent Z vies"
+    // => déjà géré par le block "perdent" ci-dessus (multipleTeamsRegex)
+    // 9) "les autres équipes perdent/perdront X vies" ou "paires de vie"
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
@@ -1301,11 +1311,20 @@
     handleVoiceResult("punie le joueur " + val);
   }
 
-  function manualEquipeGagne() {
-    const val = document.getElementById('team-winner-id').value.trim();
+  // Nouveau : plusieurs équipes gagnantes (ex : "2" ou "2 et 3")
+  function manualMultiWinners() {
+    const val = document.getElementById('multiple-winners-id').value.trim();
     if (!val) return;
-    // On simule "l'équipe X l'emporte"
-    handleVoiceResult(`l'équipe ${val} l'emporte`);
+
+    // Si une seule équipe => "l'équipe 2 l'emporte"
+    // Si plusieurs => "les équipes 2 et 3 l'emportent"
+    if (val.includes('et')) {
+      // ex : "2 et 3"
+      handleVoiceResult(`les équipes ${val} l'emportent`);
+    } else {
+      // ex : "2"
+      handleVoiceResult(`l'équipe ${val} l'emporte`);
+    }
   }
 
   function manualEquipesPerdent() {
