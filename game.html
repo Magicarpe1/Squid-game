@@ -374,10 +374,12 @@
 </head>
 <body>
 
+<!-- LOGO CLIENT A GAUCHE -->
 <div id="logo-left">
   <img src="https://ik.imagekit.io/lakolo/Follow_Agency_Logo.svg.png?updatedAt=1742471073777" alt="Logo Client" class="logo" />
 </div>
 
+<!-- NOTRE LOGO A DROITE -->
 <div id="logo-right">
   <img src="https://ik.imagekit.io/lakolo/Animateur%20(1)%20(1)-Photoroom.png?updatedAt=1742542190414" alt="Notre Logo" class="logo" />
 </div>
@@ -480,6 +482,17 @@
 </div>
 
 <script>
+  // Au chargement, on récupère le logo base64 depuis localStorage
+  window.addEventListener('DOMContentLoaded', () => {
+    const base64Logo = localStorage.getItem('clientLogo');
+    if (base64Logo) {
+      const clientLogo = document.querySelector('#logo-left .logo');
+      if (clientLogo) {
+        clientLogo.src = base64Logo; // on remplace le src par le logo importé
+      }
+    }
+  });
+
   // -------------------------------------------
   // 1) GESTION DES JOUEURS, TEAMS, UI DE BASE
   // -------------------------------------------
@@ -493,9 +506,8 @@
     team: null
   }));
 
-  // Au lieu d'un seul lastPlayers, on stocke tout l'historique (pile)
+  // On conserve l'historique des états pour "Retour" illimité
   let undoStack = [];
-
   // On pousse l'état initial
   undoStack.push(JSON.parse(JSON.stringify(players)));
 
@@ -503,19 +515,17 @@
   let currentTeams = [];
 
   function saveState() {
-    // Empile un nouveau clone dans la pile
     undoStack.push(JSON.parse(JSON.stringify(players)));
   }
 
   function undoAction() {
-    // S'il n'y a qu'un seul état => on ne peut plus annuler
     if (undoStack.length <= 1) {
       console.warn("Aucune action à annuler");
       return;
     }
-    // On retire le dernier état (celui actuel)
+    // Retire le dernier état
     undoStack.pop();
-    // On récupère le précédent
+    // Restaure le précédent
     players = JSON.parse(JSON.stringify(undoStack[undoStack.length - 1]));
 
     hideWinners();
@@ -546,6 +556,7 @@
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
+
   function playAudioFadeIn() {
     if (fadeInterval) clearInterval(fadeInterval);
     audio.pause();
@@ -561,6 +572,7 @@
       }
     }, 200);
   }
+
   function stopAudioFadeOut() {
     if (fadeInterval) clearInterval(fadeInterval);
     fadeInterval = setInterval(() => {
@@ -578,7 +590,7 @@
   // Préfixe d'URL pour les photos
   const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
-  // Affichage principal (players) :
+  // Affichage principal (players)
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -749,7 +761,7 @@
     let cardEl = null;
     for (let cd of pc.children) {
       const numberDiv = cd.querySelector('.player-card-number');
-      const cardId = parseInt(numberDiv.textContent);
+      const cardId = parseInt(numberDiv.textContent, 10);
       if (cardId === pid) {
         cardEl = cd;
         break;
@@ -787,76 +799,76 @@
       alert("Veuillez indiquer un nombre d'équipes valide.");
       return;
     }
-    startCountdown(3, ()=>{
+    startCountdown(3, () => {
       distributionEquipes(nbVal);
     });
   }
 
-  function startCountdown(from, callback){
+  function startCountdown(from, callback) {
     const over = document.getElementById('countdown-overlay');
     const numEl= document.getElementById('countdown-number');
     over.style.display='flex';
 
-    let val= from;
+    let val = from;
     numEl.textContent = val;
 
     const countdownAudio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Kids%20x%2071%20Digits%20_%20Red%20Light,%20Green%20Light%20(Official%20Audio).mp3?updatedAt=1742050169733");
     countdownAudio.volume = 1;
-    countdownAudio.play().catch(err=> console.warn("Audio error:", err));
+    countdownAudio.play().catch(err => console.warn("Audio error:", err));
 
-    const timer = setInterval(()=>{
+    const timer = setInterval(() => {
       val--;
-      if(val>0){
-        numEl.textContent= val;
+      if(val > 0){
+        numEl.textContent = val;
       } else {
         clearInterval(timer);
-        over.style.display='none';
+        over.style.display = 'none';
         callback();
       }
-    },1000);
+    }, 1000);
   }
 
-  function distributionEquipes(nbEquipes){
+  function distributionEquipes(nbEquipes) {
     currentNbTeams = nbEquipes;
-    let arr=[...players];
+    let arr = [...players];
     // Mélange aléatoire
-    for(let i= arr.length-1; i>0; i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [arr[i], arr[j]]=[arr[j], arr[i]];
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
 
-    currentTeams = Array.from({length: nbEquipes}, ()=>[]);
-    let idx=0;
-    arr.forEach(p=>{
-      p.team = idx+1;
+    currentTeams = Array.from({length: nbEquipes}, () => []);
+    let idx = 0;
+    arr.forEach(p => {
+      p.team = idx + 1;
       currentTeams[idx].push(p);
-      idx = (idx+1) % nbEquipes;
+      idx = (idx + 1) % nbEquipes;
     });
 
-    const pc= document.getElementById('players-container');
-    pc.innerHTML='';
-    pc.style.display='none';
+    const pc = document.getElementById('players-container');
+    pc.innerHTML = '';
+    pc.style.display = 'none';
 
     renderTeamsUI();
   }
 
-  function renderTeamsUI(){
+  function renderTeamsUI() {
     const tc= document.getElementById('teams-container');
     tc.innerHTML='';
     tc.style.display='flex';
 
-    currentTeams.forEach((teamArr, i)=>{
-      const box=document.createElement('div');
-      box.className='team-box';
+    currentTeams.forEach((teamArr, i) => {
+      const box = document.createElement('div');
+      box.className = 'team-box';
 
-      const title=document.createElement('h2');
-      title.textContent= "Équipe "+(i+1);
+      const title = document.createElement('h2');
+      title.textContent= "Équipe " + (i+1);
       box.appendChild(title);
 
-      const cardsDiv=document.createElement('div');
-      cardsDiv.className='team-cards';
+      const cardsDiv = document.createElement('div');
+      cardsDiv.className = 'team-cards';
 
-      teamArr.forEach(p=>{
+      teamArr.forEach(p => {
         let cardClass = 'player-card';
         if(p.lives <= 0) {
           cardClass += ' no-lives';
@@ -866,7 +878,7 @@
         if(p.isWinner) cardClass += ' active';
 
         const card = document.createElement('div');
-        card.className=cardClass;
+        card.className = cardClass;
         card.onclick = () => toggleWinnerManually(p.id);
 
         const img = document.createElement('img');
@@ -880,13 +892,13 @@
         img.style.borderRadius = '5px 5px 0 0';
         card.appendChild(img);
 
-        const num=document.createElement('div');
-        num.className='player-card-number';
-        num.textContent= p.id.toString().padStart(3,'0');
+        const num = document.createElement('div');
+        num.className = 'player-card-number';
+        num.textContent = p.id.toString().padStart(3,'0');
 
-        const lv=document.createElement('div');
-        lv.className='player-lives';
-        lv.textContent=`Vies: ${p.lives}`;
+        const lv = document.createElement('div');
+        lv.className = 'player-lives';
+        lv.textContent = `Vies: ${p.lives}`;
 
         card.appendChild(num);
         card.appendChild(lv);
@@ -899,17 +911,17 @@
     applyTeamStylesIfVisible();
   }
 
-  function breakTeams(){
-    const tc=document.getElementById('teams-container');
-    tc.innerHTML='';
-    tc.style.display='none';
-    players.forEach(p=> p.team=null);
+  function breakTeams() {
+    const tc = document.getElementById('teams-container');
+    tc.innerHTML = '';
+    tc.style.display = 'none';
+    players.forEach(p => p.team = null);
     currentTeams = [];
     currentNbTeams = 0;
     renderPlayers();
   }
 
-  function applyTeamStylesIfVisible(){
+  function applyTeamStylesIfVisible() {
     const tc = document.getElementById('teams-container');
     if (tc.style.display === 'none') return;
     const boxes = tc.querySelectorAll('.team-box');
@@ -1021,7 +1033,7 @@
       return;
     }
 
-    // 2) Punir un joueur (ex: "punie le joueur 7")
+    // 2) Punir un joueur
     if (
       str.includes('punie le joueur') ||
       str.includes('punie moi le joueur') ||
@@ -1053,21 +1065,17 @@
 
     // 3) Plusieurs équipes gagnent : "l'équipe X et Y l'emporte(nt)" ou "les équipes X et Y l'emportent"
     {
-      // On capture "l'équipe" ou "les équipes"
-      // puis X et Y et Z (group 1), 
-      // puis "l'emporte" ou "l'emportent"
       const multiWinnersRegex = /(?:l'équipe|les équipes)\s+((?:un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+l'emporte(?:nt)?/i;
       const multiMatch = str.match(multiWinnersRegex);
       if (multiMatch) {
-        const teamsPart = multiMatch[1]; // ex: "2 et 3"
+        const teamsPart = multiMatch[1];
         stopAudioFadeOut();
         playAudioFadeIn();
 
-        // On sépare sur " et "
-        const splitted = teamsPart.split(/\set\s+/i);
         saveState();
+        // Ex: "2 et 3"
+        const splitted = teamsPart.split(/\set\s+/i);
 
-        // Pour chaque équipe mentionnée
         splitted.forEach(tp => {
           let tid = tp.toLowerCase();
           if (spelledNumbers[tid] !== undefined) {
@@ -1076,22 +1084,18 @@
             tid = parseInt(tid, 10);
           }
           if (!isNaN(tid)) {
-            // Marquer tous les joueurs de cette team en winner
+            // Marquer winner
             if (currentNbTeams > 0) {
-              // Mode équipes
               players.filter(p => p.team === tid).forEach(p => p.isWinner = true);
             }
           }
         });
 
-        // Si on est en mode équipes, on fait apparaitre les winners
         if (currentNbTeams > 0) {
           renderTeamsUI();
           showWinners();
         } else {
-          // S'il n'y a pas d'équipes, la notion "équipe X" n'a pas de sens
-          // (vous pouvez gérer autrement si besoin)
-          console.warn("Il n'y a pas d'équipes créées, ignore la commande");
+          console.warn("Pas d'équipes actives, commande ignorée");
         }
         applyTeamStylesIfVisible();
         return;
@@ -1104,7 +1108,7 @@
       const multiPM = str.match(multiPairesRegex);
       if (multiPM) {
         const teamsPart = multiPM[1];
-        const lifePart = 2; // "paires de vie" => 2 vies perdues
+        const lifePart = 2;
 
         saveState();
         hideWinners();
@@ -1186,7 +1190,7 @@
       return;
     }
 
-    // 6) "l'équipe X perd Y vie" (cas simple)
+    // 6) "l'équipe X perd Y vie" (simple)
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1227,12 +1231,8 @@
       }
     }
 
-    // 7) "l'équipe X l'emporte" (cas isolé) => pour 1 équipe
-    // (Mais on vient de gérer le cas multiple. On gère donc le single ici si besoin)
+    // 7) "l'équipe X l'emporte" (single)
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
-      // On vérifie d'abord si c'était déjà pris en charge par le multi (au cas où).
-      // Dans le code actuel, le multi a un "return" si ça matche,
-      // donc si on arrive ici, c'est forcément 1 seule équipe.
       const matchTeam = str.match(/l'équipe (un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
         let val = matchTeam[1].toLowerCase();
@@ -1243,9 +1243,7 @@
         }
         stopAudioFadeOut();
         playAudioFadeIn();
-        // On applique la même logique
         saveState();
-        // Marque tous les joueurs de l'équipe "val" en isWinner
         players.filter(p => p.team === val).forEach(p => p.isWinner = true);
         renderTeamsUI();
         showWinners();
@@ -1254,9 +1252,7 @@
       return;
     }
 
-    // 8) "l'équipe X Y perdent Z vies"
-    // => déjà géré par le block "perdent" ci-dessus (multipleTeamsRegex)
-    // 9) "les autres équipes perdent/perdront X vies" ou "paires de vie"
+    // 8) "les autres équipes perdent/perdront X vies" ou "paires de vie"
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
@@ -1307,22 +1303,18 @@
   function manualPunirJoueur() {
     const val = document.getElementById('punir-joueur-id').value.trim();
     if (!val) return;
-    // On simule "punie le joueur X"
     handleVoiceResult("punie le joueur " + val);
   }
 
-  // Nouveau : plusieurs équipes gagnantes (ex : "2" ou "2 et 3")
   function manualMultiWinners() {
     const val = document.getElementById('multiple-winners-id').value.trim();
     if (!val) return;
 
-    // Si une seule équipe => "l'équipe 2 l'emporte"
-    // Si plusieurs => "les équipes 2 et 3 l'emportent"
     if (val.includes('et')) {
-      // ex : "2 et 3"
+      // ex: "2 et 3"
       handleVoiceResult(`les équipes ${val} l'emportent`);
     } else {
-      // ex : "2"
+      // ex: "2"
       handleVoiceResult(`l'équipe ${val} l'emporte`);
     }
   }
@@ -1331,21 +1323,18 @@
     const t = document.getElementById('teams-lose-input').value.trim();
     const l = document.getElementById('lives-lost-input').value.trim();
     if (!t || !l) return;
-    // Exemple: "l'équipe 2 et 3 perd 1 vie"
     handleVoiceResult(`l'équipe ${t} perd ${l} vie`);
   }
 
   function manualPairesDeVie() {
     const t = document.getElementById('teams-paires-input').value.trim();
     if (!t) return;
-    // Exemple: "l'équipe 4 et 5 paires de vie"
     handleVoiceResult(`l'équipe ${t} paires de vie`);
   }
 
   function manualOtherTeamsLose() {
     const val = document.getElementById('other-teams-lost').value.trim();
     if (!val) return;
-    // Exemple: "les autres équipes perdent 2 vies"
     handleVoiceResult(`les autres équipes perdent ${val} vies`);
   }
 
@@ -1353,7 +1342,6 @@
     const teams = document.getElementById('multi-teams-vies').value.trim();
     const vie = document.getElementById('multi-vies-lost').value.trim();
     if (!teams || !vie) return;
-    // Exemple: "l'équipe 2 3 4 perdent 2 vies"
     handleVoiceResult(`l'équipe ${teams} perdent ${vie} vies`);
   }
 
