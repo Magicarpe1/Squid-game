@@ -342,6 +342,34 @@
       opacity: 0.4;
       background-color: #222 !important;
     }
+
+    /* Commandes manuelles */
+    #manual-commands {
+      margin-top: 50px;
+      border-top: 1px solid #aaa;
+      padding-top: 20px;
+    }
+    #manual-commands h2 {
+      font-family: "GameOfSquids", sans-serif;
+      font-size: 1.5rem;
+      color: #ffcc00;
+    }
+    #manual-commands .command-block {
+      margin: 15px 0;
+    }
+    #manual-commands input {
+      border: 1px solid #fff;
+      background-color: #202020;
+      color: #fff;
+      border-radius: 5px;
+      padding: 5px;
+      margin: 0 5px;
+    }
+    #manual-commands button {
+      margin: 5px;
+      padding: 6px 10px;
+      font-family: "GameOfSquids", sans-serif;
+    }
   </style>
 </head>
 <body>
@@ -388,7 +416,73 @@
   <button id="voice-btn" onclick="toggleVoiceRecognition()">Activer la Reconnaissance Vocale</button>
 </div>
 
+<!-- Panneau de commandes manuelles -->
+<div id="manual-commands">
+  <h2>Commandes Manuelles (équivalent vocal)</h2>
+
+  <!-- 1) RETOUR -->
+  <div class="command-block">
+    <button onclick="handleVoiceResult('retour')">Retour</button>
+    <small>Équivaut à dire « retour »</small>
+  </div>
+
+  <!-- 2) Punir un joueur -->
+  <div class="command-block">
+    <label for="punir-joueur-id">Punir le joueur :</label>
+    <input type="number" id="punir-joueur-id" min="1" placeholder="N° joueur" />
+    <button onclick="manualPunirJoueur()">Punir</button>
+    <small>Équivaut à dire « punie le joueur X »</small>
+  </div>
+
+  <!-- 3) L'équipe X l'emporte -->
+  <div class="command-block">
+    <label for="team-winner-id">L'équipe gagne :</label>
+    <input type="text" id="team-winner-id" placeholder="ex: 2" />
+    <button onclick="manualEquipeGagne()">Valider</button>
+    <small>Équivaut à « l'équipe 2 l'emporte »</small>
+  </div>
+
+  <!-- 4) L'équipe X et Y perd N vie -->
+  <div class="command-block">
+    <label for="teams-lose-input">Équipe(s) :</label>
+    <input type="text" id="teams-lose-input" placeholder="ex: 2 et 3" />
+    <label for="lives-lost-input">Perd :</label>
+    <input type="text" id="lives-lost-input" placeholder="ex: 1" />
+    <button onclick="manualEquipesPerdent()">Valider</button>
+    <small>Équivaut à « l'équipe 2 et 3 perd 1 vie »</small>
+  </div>
+
+  <!-- 5) L'équipe X paires de vie -->
+  <div class="command-block">
+    <label for="teams-paires-input">Équipe(s) :</label>
+    <input type="text" id="teams-paires-input" placeholder="ex: 4 et 5" />
+    <button onclick="manualPairesDeVie()">Paires de vie</button>
+    <small>Équivaut à « l'équipe 4 et 5 paires de vie » (2 vies perdues)</small>
+  </div>
+
+  <!-- 6) Les autres équipes perdent X vies -->
+  <div class="command-block">
+    <label for="other-teams-lost">Autres équipes perdent :</label>
+    <input type="text" id="other-teams-lost" placeholder="ex: 2" />
+    <button onclick="manualOtherTeamsLose()">Valider</button>
+    <small>Équivaut à « les autres équipes perdent 2 vies »</small>
+  </div>
+
+  <!-- 7) L'équipe X Y perdent N vies (exemple plus large) -->
+  <div class="command-block">
+    <label for="multi-teams-vies">Équipe(s) :</label>
+    <input type="text" id="multi-teams-vies" placeholder="ex: 2 3 4" />
+    <label for="multi-vies-lost">perdent :</label>
+    <input type="text" id="multi-vies-lost" placeholder="ex: 2" />
+    <button onclick="manualMultiTeamsLose()">Valider</button>
+    <small>Équivaut à « l'équipe 2 3 4 perdent 2 vies »</small>
+  </div>
+</div>
+
 <script>
+  // -------------------------------------------
+  // 1) GESTION DES JOUEURS, TEAMS, UI DE BASE
+  // -------------------------------------------
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
 
@@ -398,20 +492,32 @@
     isWinner: false,
     team: null
   }));
-  let lastPlayers = null;
+
+  // Au lieu d'un seul lastPlayers, on stocke tout l'historique
+  let undoStack = [];
+
+  // On pousse l'état initial
+  undoStack.push(JSON.parse(JSON.stringify(players)));
 
   let currentNbTeams = 0;
   let currentTeams = [];
 
   function saveState() {
-    lastPlayers = JSON.parse(JSON.stringify(players));
+    // On empile un nouveau clone dans la pile
+    undoStack.push(JSON.parse(JSON.stringify(players)));
   }
+
   function undoAction() {
-    if (!lastPlayers) {
+    // S'il n'y a qu'un seul état => on ne peut plus annuler
+    if (undoStack.length <= 1) {
       console.warn("Aucune action à annuler");
       return;
     }
-    players = JSON.parse(JSON.stringify(lastPlayers));
+    // On retire le dernier état (celui actuel)
+    undoStack.pop();
+    // On récupère le précédent
+    players = JSON.parse(JSON.stringify(undoStack[undoStack.length - 1]));
+
     hideWinners();
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
@@ -436,6 +542,7 @@
     receiver.lives += amount;
   }
 
+  // Musique de fond pour la victoire
   const audio = new Audio("https://ik.imagekit.io/lakolo/Squid%20Game%20%20Piggy%20Bank%20Scene.mp3?updatedAt=1737407404597");
   audio.volume = 1.0;
   let fadeInterval = null;
@@ -468,9 +575,10 @@
     }, 200);
   }
 
-  // Préfixe d'URL. On concatène l'id puis ".JPG"
+  // Préfixe d'URL pour les photos
   const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
+  // Affichage principal (players) :
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -488,7 +596,6 @@
 
       const img = document.createElement('img');
       img.src = `${photoBasePrefix}${p.id}.JPG`;
-      // Si l'image ne se charge pas, on retire l'élément (pas d'icône de fichier manquant).
       img.onerror = () => {
         img.remove();
       };
@@ -669,6 +776,9 @@
     };
   }
 
+  // -------------------------------------------
+  // 2) GESTION DES ÉQUIPES
+  // -------------------------------------------
   function createTeams() {
     const inputEl = document.getElementById('teams-input');
     if(!inputEl) return;
@@ -709,6 +819,7 @@
   function distributionEquipes(nbEquipes){
     currentNbTeams = nbEquipes;
     let arr=[...players];
+    // Mélange aléatoire
     for(let i= arr.length-1; i>0; i--){
       const j=Math.floor(Math.random()*(i+1));
       [arr[i], arr[j]]=[arr[j], arr[i]];
@@ -760,7 +871,6 @@
 
         const img = document.createElement('img');
         img.src = `${photoBasePrefix}${p.id}.JPG`;
-        // Retirer l'img si elle ne charge pas
         img.onerror = () => {
           img.remove();
         };
@@ -806,6 +916,7 @@
     boxes.forEach((box, index) => {
       const teamNumber = index + 1;
       const teamPlayers = players.filter(p => p.team === teamNumber);
+      // est-ce qu'il y a au moins un joueur vivant ?
       const isDead = teamPlayers.some(p => p.lives <= 0);
       if(isDead){
         box.classList.add('dead-team');
@@ -815,10 +926,14 @@
     });
   }
 
+  // -------------------------------------------
+  // 3) RECONNAISSANCE VOCALE
+  // -------------------------------------------
   let recognition = null;
   let isVoiceActive = false;
   let isCommandMode = false;
 
+  // Mappage mots->chiffres
   const spelledNumbers = {
     'un': 1, 'une': 1,
     'deux': 2, 'de': 2,
@@ -830,6 +945,7 @@
     'paires': 2
   };
 
+  // Corrections simples (substitutions) sur la phrase
   function synonymsSubstitutions(str) {
     str = str.replace(/plus ni moins/gi, "punie");
     str = str.replace(/plus ni moi/gi, "punie");
@@ -893,14 +1009,19 @@
     }
   }
 
+  // -------------------------------------------
+  // 4) GESTION DES COMMANDES (handleVoiceResult)
+  // -------------------------------------------
   function handleVoiceResult(str) {
     console.log("Reco final:", str);
 
+    // 1) Retour
     if (str.includes('retour')) {
       undoAction();
       return;
     }
 
+    // 2) Punir un joueur (ex: "punie le joueur 7")
     if (
       str.includes('punie le joueur') ||
       str.includes('punie moi le joueur') ||
@@ -930,12 +1051,13 @@
       return;
     }
 
+    // 3) "l'équipe X et Y paires de vie" => -2 vies
     {
       const multiPairesRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+paires\s+de\s+vie/i;
       const multiPM = str.match(multiPairesRegex);
       if (multiPM) {
         const teamsPart = multiPM[1];
-        const lifePart = 2;
+        const lifePart = 2; // "paires de vie" => 2 vies perdues
 
         saveState();
         hideWinners();
@@ -971,7 +1093,7 @@
       }
     }
 
-    // "l'équipe X et Y perd une vie"
+    // 4) "l'équipe X et Y perd N vie"
     const multipleTeamsRegex = /l'équipe\s+((?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)(?:\s+et\s+(?:un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+))*)\s+perd(?:ent)?\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
     const multiMatches = str.match(multipleTeamsRegex);
     if (multiMatches) {
@@ -1017,6 +1139,7 @@
       return;
     }
 
+    // 5) "l'équipe X perd Y vie"
     {
       const reSingle = /l'équipe\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+perd\s+(un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)\s+vie/i;
       const mSingle = str.match(reSingle);
@@ -1057,6 +1180,7 @@
       }
     }
 
+    // 6) "l'équipe X l'emporte"
     if ((str.includes("l'emporte") || str.includes("lampe porte")) && str.includes("l'équipe")) {
       const matchTeam = str.match(/l'équipe (un|une|deux|de|trois|quatre|cinq|six|sept|huit|neuf|dix|\d+)/);
       if (matchTeam && matchTeam[1]) {
@@ -1073,6 +1197,7 @@
       return;
     }
 
+    // 7) "l'équipe X Y perdent Z vies"
     if ((str.includes("l'équipe") || str.includes("les équipes")) && str.includes("perdent") && str.includes("vies")) {
       saveState();
       hideWinners();
@@ -1121,6 +1246,7 @@
       return;
     }
 
+    // 8) "les autres équipes perdent/perdront X vies" ou "paires de vie"
     if (str.includes('les autres équipes perdent') ||
         str.includes('les autres équipes perdront') ||
         str.includes('les autres équipes paires de vie')) {
@@ -1165,6 +1291,54 @@
     console.log("Aucune commande reconnue pour:", str);
   }
 
+  // -------------------------------------------
+  // 5) COMMANDES MANUELLES (boutons)
+  // -------------------------------------------
+  function manualPunirJoueur() {
+    const val = document.getElementById('punir-joueur-id').value.trim();
+    if (!val) return;
+    // On simule "punie le joueur X"
+    handleVoiceResult("punie le joueur " + val);
+  }
+
+  function manualEquipeGagne() {
+    const val = document.getElementById('team-winner-id').value.trim();
+    if (!val) return;
+    // On simule "l'équipe X l'emporte"
+    handleVoiceResult(`l'équipe ${val} l'emporte`);
+  }
+
+  function manualEquipesPerdent() {
+    const t = document.getElementById('teams-lose-input').value.trim();
+    const l = document.getElementById('lives-lost-input').value.trim();
+    if (!t || !l) return;
+    // Exemple: "l'équipe 2 et 3 perd 1 vie"
+    handleVoiceResult(`l'équipe ${t} perd ${l} vie`);
+  }
+
+  function manualPairesDeVie() {
+    const t = document.getElementById('teams-paires-input').value.trim();
+    if (!t) return;
+    // Exemple: "l'équipe 4 et 5 paires de vie"
+    handleVoiceResult(`l'équipe ${t} paires de vie`);
+  }
+
+  function manualOtherTeamsLose() {
+    const val = document.getElementById('other-teams-lost').value.trim();
+    if (!val) return;
+    // Exemple: "les autres équipes perdent 2 vies"
+    handleVoiceResult(`les autres équipes perdent ${val} vies`);
+  }
+
+  function manualMultiTeamsLose() {
+    const teams = document.getElementById('multi-teams-vies').value.trim();
+    const vie = document.getElementById('multi-vies-lost').value.trim();
+    if (!teams || !vie) return;
+    // Exemple: "l'équipe 2 3 4 perdent 2 vies"
+    handleVoiceResult(`l'équipe ${teams} perdent ${vie} vies`);
+  }
+
+  // Initial rendering
   renderPlayers();
 </script>
 </body>
