@@ -22,6 +22,36 @@
       align-items: flex-start;
       gap: 10px;
     }
+
+    /* On masque le vrai input, on utilisera un label stylé pour cliquer */
+    #logoFile {
+      display: none; /* on le cache */
+    }
+
+    /* Bouton custom pour remplacer le "Choose file" */
+    .custom-file-label {
+      display: inline-block;
+      font-size: 1rem;
+      background-color: #ff3e68;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: none;
+      margin: 0; /* Ajustez si besoin */
+    }
+    .custom-file-label:hover {
+      background-color: #c32d4e;
+    }
+
+    /* Le nom du fichier */
+    #file-name {
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: #ccc;
+      font-style: italic;
+    }
+
     #logo-left img {
       max-width: 150px; /* Ajustez la taille si besoin */
       height: auto;
@@ -29,12 +59,18 @@
       border: 2px solid #fff;
       border-radius: 5px;
     }
-    input {
+
+    input[type="number"] {
       font-size: 1.2rem;
       padding: 10px;
       width: 120px;
       text-align: center;
+      background-color: #202020;
+      color: #fff;
+      border: 1px solid #fff;
+      border-radius: 5px;
     }
+
     button {
       font-size: 1.2rem;
       padding: 10px 20px;
@@ -48,6 +84,7 @@
     button:hover {
       background-color: #c32d4e;
     }
+
     h1 {
       margin-top: 120px; /* évite que le h1 soit recouvert par le bloc du logo */
     }
@@ -55,7 +92,11 @@
 </head>
 <body>
   <div id="logo-left">
-    <!-- Champ pour importer l'image -->
+    <!-- Label stylé pour cliquer et ouvrir la boîte de dialogue -->
+    <label for="logoFile" class="custom-file-label">Choisir un fichier</label>
+    <!-- Le nom du fichier sélectionné s'affichera ici -->
+    <div id="file-name"></div>
+    <!-- Champ pour importer l'image (caché) -->
     <input type="file" id="logoFile" accept="image/*" />
     <!-- L'image du client s'affichera ici dès qu'on aura choisi un fichier -->
     <img id="clientLogo" alt="Logo Client" />
@@ -70,16 +111,25 @@
     // Récupération des éléments du DOM
     const logoFileInput = document.getElementById('logoFile');
     const clientLogoImg = document.getElementById('clientLogo');
+    const fileNameSpan = document.getElementById('file-name');
+
+    // Au clic sur le label, on ouvre le input file
+    // (fonctionnement normal du label "for=...")
+    // => Pas de JS supplémentaire nécessaire pour ça
 
     // Écoute le changement de fichier
     logoFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) {
         clientLogoImg.style.display = 'none';
+        fileNameSpan.textContent = "";
         // Si aucun fichier, on vide éventuellement le localStorage
         localStorage.removeItem('clientLogo');
         return;
       }
+
+      // On met à jour le nom du fichier sélectionné
+      fileNameSpan.textContent = file.name;
 
       // On va lire le fichier en base64 (data URL)
       const reader = new FileReader();
