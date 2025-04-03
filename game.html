@@ -394,7 +394,7 @@
   <span class="shape-square">■</span>
   <span>GAME</span>
 </h1>
-<p>À qui le tour ?</p>
+<p>À qui le tour ? (Double-clic sur le NUMÉRO pour modifier)</p>
 
 <div id="teams-management">
   <input id="teams-input" type="number" placeholder="Nb équipes" min="1" />
@@ -517,6 +517,7 @@
 
   // Sauvegarde l'état actuel
   function saveState() {
+    console.log("[saveState] Pushing current players state to undoStack");
     undoStack.push(JSON.parse(JSON.stringify(players)));
   }
 
@@ -530,6 +531,7 @@
     undoStack.pop();
     // Restaure le précédent
     players = JSON.parse(JSON.stringify(undoStack[undoStack.length - 1]));
+    console.log("[undoAction] Restored previous state");
 
     hideWinners();
     if (document.getElementById('teams-container').style.display !== 'none') {
@@ -542,12 +544,19 @@
 
   // Double-clic => changement d'ID
   function changePlayerId(player) {
+    // Log pour debug
+    console.log(`[changePlayerId] Joueur actuel: id=${player.id}. Début du prompt...`);
+
     const newIdRaw = prompt("Entrez le nouveau numéro du joueur :", player.id);
-    if (newIdRaw === null) return; // Annulé
+    if (newIdRaw === null) {
+      console.log("[changePlayerId] Prompt annulé, aucun changement.");
+      return; // Annulé
+    }
     const newId = parseInt(newIdRaw, 10);
 
     if (isNaN(newId) || newId < 1) {
       alert("Numéro invalide !");
+      console.log("[changePlayerId] Numéro invalide, aucun changement.");
       return;
     }
 
@@ -555,12 +564,16 @@
     const alreadyExists = players.find((p) => p.id === newId && p !== player);
     if (alreadyExists) {
       const force = confirm(`Un joueur avec l'ID ${newId} existe déjà. Continuer quand même ?`);
-      if (!force) return;
+      if (!force) {
+        console.log("[changePlayerId] Conflit d'ID et refus de forcer. Annulation.");
+        return;
+      }
     }
 
     // Sauvegarde l'état
     saveState();
     // Appliquer le changement
+    console.log(`[changePlayerId] Changement id: ${player.id} --> ${newId}`);
     player.id = newId;
 
     // Mettre à jour l'interface
@@ -611,6 +624,7 @@
 
   // Affichage principal (players)
   function renderPlayers() {
+    console.log("[renderPlayers] Mise à jour de la vue 'players'");
     const container = document.getElementById('players-container');
     container.innerHTML = '';
     container.style.display = 'flex';
@@ -626,6 +640,7 @@
 
       // CLICK simple => toggle winner
       card.addEventListener('click', () => {
+        console.log(`[click] Carte joueur ${p.id} => toggleWinnerManually`);
         toggleWinnerManually(p.id);
       });
 
@@ -648,11 +663,13 @@
 
       // DOUBLE-CLICK sur le numéro => changer ID
       pn.addEventListener('dblclick', (e) => {
-        e.stopPropagation();   // Éviter le toggleWinner
-        e.preventDefault();    // Empêcher l'action par défaut
+        e.stopPropagation();
+        e.preventDefault();
+        console.log(`[dblclick] sur le numéro joueur ${p.id}`);
         changePlayerId(p);
       });
 
+      // Vies
       const lv = document.createElement('div');
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
@@ -677,6 +694,7 @@
   }
 
   function processRound() {
+    console.log("[processRound] Soumettre les gagnants, suppression des vies des perdants");
     saveState();
     hideWinners();
     const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
@@ -698,6 +716,7 @@
   function confirmReset() {
     const sure = confirm("Êtes-vous sûr de vouloir réinitialiser ?");
     if (!sure) return;
+    console.log("[confirmReset] Réinitialisation des joueurs");
     saveState();
     hideWinners();
     players.forEach(p => {
@@ -854,6 +873,7 @@
   }
 
   function distributionEquipes(nbEquipes) {
+    console.log(`[distributionEquipes] Création de ${nbEquipes} équipes`);
     currentNbTeams = nbEquipes;
     let arr = [...players];
     // Mélange aléatoire
@@ -878,6 +898,7 @@
   }
 
   function renderTeamsUI() {
+    console.log("[renderTeamsUI] Mise à jour de la vue 'teams'");
     const tc= document.getElementById('teams-container');
     tc.innerHTML='';
     tc.style.display='flex';
@@ -907,6 +928,7 @@
 
         // Clic => toggle winner
         card.addEventListener('click', () => {
+          console.log(`[click] Carte joueur ${p.id} (en équipe ${p.team}) => toggleWinnerManually`);
           toggleWinnerManually(p.id);
         });
 
@@ -929,6 +951,7 @@
         num.addEventListener('dblclick', (e) => {
           e.stopPropagation();
           e.preventDefault();
+          console.log(`[dblclick] sur le numéro joueur ${p.id} (en équipe ${p.team})`);
           changePlayerId(p);
         });
 
@@ -948,6 +971,7 @@
   }
 
   function breakTeams() {
+    console.log("[breakTeams] Suppression du mode Équipes");
     const tc = document.getElementById('teams-container');
     tc.innerHTML = '';
     tc.style.display = 'none';
@@ -1067,7 +1091,7 @@
   // 4) GESTION DES COMMANDES (handleVoiceResult)
   // -------------------------------------------
   function handleVoiceResult(str) {
-    console.log("Reco final:", str);
+    console.log("[handleVoiceResult] Reco final:", str);
 
     // 1) Retour
     if (str.includes('retour')) {
