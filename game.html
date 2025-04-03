@@ -483,7 +483,7 @@
 </div>
 
 <script>
-  // Au chargement, on récupère le logo base64 depuis localStorage (si présent)
+  // Au chargement, on récupère un éventuel logo base64 depuis localStorage
   window.addEventListener('DOMContentLoaded', () => {
     const base64Logo = localStorage.getItem('clientLogo');
     if (base64Logo) {
@@ -495,7 +495,7 @@
   });
 
   // -------------------------------------------
-  // 1) GESTION DES JOUEURS
+  // 1) GESTION DES JOUEURS, TEAMS, UI DE BASE
   // -------------------------------------------
   const urlParams = new URLSearchParams(window.location.search);
   const numPlayers = parseInt(urlParams.get('players'), 10) || 12;
@@ -507,19 +507,20 @@
     team: null
   }));
 
-  // Historique pour "Retour"
+  // On conserve l'historique des états pour "Retour" illimité
   let undoStack = [];
+  // On pousse l'état initial
   undoStack.push(JSON.parse(JSON.stringify(players)));
 
   let currentNbTeams = 0;
   let currentTeams = [];
 
-  // Sauvegarder l'état actuel dans l'historique
+  // Sauvegarde l'état actuel
   function saveState() {
     undoStack.push(JSON.parse(JSON.stringify(players)));
   }
 
-  // Bouton "Retour" : on annule la dernière action
+  // Bouton "Retour"
   function undoAction() {
     if (undoStack.length <= 1) {
       console.warn("Aucune action à annuler");
@@ -527,7 +528,7 @@
     }
     // Retire le dernier état
     undoStack.pop();
-    // Restaure l'état précédent
+    // Restaure le précédent
     players = JSON.parse(JSON.stringify(undoStack[undoStack.length - 1]));
 
     hideWinners();
@@ -542,7 +543,7 @@
   // Double-clic => changement d'ID
   function changePlayerId(player) {
     const newIdRaw = prompt("Entrez le nouveau numéro du joueur :", player.id);
-    if (newIdRaw === null) return; // annulé
+    if (newIdRaw === null) return; // Annulé
     const newId = parseInt(newIdRaw, 10);
 
     if (isNaN(newId) || newId < 1) {
@@ -550,20 +551,19 @@
       return;
     }
 
-    // Vérifier si un autre joueur a déjà cet ID
-    const already = players.find(p => p.id === newId && p !== player);
-    if (already) {
+    // Vérifier s'il y a déjà un joueur avec cet ID
+    const alreadyExists = players.find((p) => p.id === newId && p !== player);
+    if (alreadyExists) {
       const force = confirm(`Un joueur avec l'ID ${newId} existe déjà. Continuer quand même ?`);
       if (!force) return;
     }
 
     // Sauvegarde l'état
     saveState();
-
-    // On modifie le joueur
+    // Appliquer le changement
     player.id = newId;
 
-    // Met à jour l'interface
+    // Mettre à jour l'interface
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
     } else {
@@ -606,10 +606,10 @@
     }, 200);
   }
 
-  // Préfixe pour les images
+  // Préfixe d'URL pour les photos
   const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
-  // Affichage des joueurs en mode "liste"
+  // Affichage principal (players)
   function renderPlayers() {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
@@ -624,13 +624,17 @@
       const card = document.createElement('div');
       card.className = cardClass;
 
-      // Clic simple => toggle gagnant
-      card.onclick = () => toggleWinnerManually(p.id);
+      // CLICK simple => toggle winner
+      card.addEventListener('click', () => {
+        toggleWinnerManually(p.id);
+      });
 
       // Image
       const img = document.createElement('img');
       img.src = `${photoBasePrefix}${p.id}.JPG`;
-      img.onerror = () => img.remove();
+      img.onerror = () => {
+        img.remove();
+      };
       img.style.width = '100%';
       img.style.height = '40%';
       img.style.objectFit = 'cover';
@@ -641,13 +645,14 @@
       const pn = document.createElement('div');
       pn.className = 'player-card-number';
       pn.textContent = p.id.toString().padStart(3, '0');
-      // Double-clic => changer l'ID
-      pn.ondblclick = (e) => {
-        e.stopPropagation(); // Évite de toggleWinner
-        changePlayerId(p);
-      };
 
-      // Vies
+      // DOUBLE-CLICK sur le numéro => changer ID
+      pn.addEventListener('dblclick', (e) => {
+        e.stopPropagation();   // Éviter le toggleWinner
+        e.preventDefault();    // Empêcher l'action par défaut
+        changePlayerId(p);
+      });
+
       const lv = document.createElement('div');
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
@@ -663,7 +668,6 @@
     const pl = players.find(x => x.id === pid);
     if (!pl) return;
     pl.isWinner = !pl.isWinner;
-
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
     } else {
@@ -676,16 +680,13 @@
     saveState();
     hideWinners();
     const livesToRemove = parseInt(document.getElementById('lives-input').value) || 1;
-
     players.forEach(p => {
       if (!p.isWinner && p.lives > 0) {
         p.lives -= livesToRemove;
         if (p.lives < 0) p.lives = 0;
       }
-      // On retire le statut gagnant
       p.isWinner = false;
     });
-
     if (document.getElementById('teams-container').style.display !== 'none') {
       renderTeamsUI();
     } else {
@@ -706,13 +707,11 @@
     });
     currentTeams = [];
     currentNbTeams = 0;
-
     document.getElementById('teams-container').innerHTML = '';
     document.getElementById('teams-container').style.display = 'none';
     renderPlayers();
   }
 
-  // Affiche un overlay pour voir les gagnants + clones
   function showWinners() {
     const w = players.filter(x => x.isWinner);
     const ov = document.getElementById('winners-overlay');
@@ -721,7 +720,6 @@
       ov.style.display = 'none';
       return;
     }
-    // Si on est en vue "players", on masque les gagnants
     const pc = document.getElementById('players-container');
     if (pc.style.display !== 'none') {
       for (let c of pc.children) {
@@ -731,7 +729,6 @@
         if (pl && pl.isWinner) c.style.display = 'none';
       }
     }
-    // Pareil en vue "teams"
     const tc = document.getElementById('teams-container');
     if (tc.style.display !== 'none') {
       const teamCards = tc.querySelectorAll('.player-card');
@@ -742,11 +739,9 @@
         if (pl && pl.isWinner) card.style.display = 'none';
       }
     }
-    // On clone les gagnants dans un overlay
     w.forEach(wi => {
       const clone = document.createElement('div');
       clone.className = 'winner-clone';
-      // Clic => on enlève le statut gagnant
       clone.onclick = () => {
         saveState();
         wi.isWinner = false;
@@ -758,7 +753,6 @@
         }
         applyTeamStylesIfVisible();
       };
-
       const cn = document.createElement('div');
       cn.className = 'clone-number';
       cn.textContent = wi.id.toString().padStart(3, '0');
@@ -778,7 +772,6 @@
     const ov = document.getElementById('winners-overlay');
     ov.innerHTML = '';
     ov.style.display = 'none';
-    // on réaffiche tous
     const pc = document.getElementById('players-container');
     for (let c of pc.children) c.style.display = '';
     const tc = document.getElementById('teams-container');
@@ -787,14 +780,14 @@
   }
 
   function showMinusLife(pid, lostValue) {
-    // effet d'animation " -1 vie "
     const pc = document.getElementById('players-container');
-    if (pc.style.display === 'none') return; // on ne le fait qu'en vue "players"
+    if (pc.style.display === 'none') return;
     let cardEl = null;
     for (let cd of pc.children) {
       const numberDiv = cd.querySelector('.player-card-number');
       const cardId = parseInt(numberDiv.textContent, 10);
-      if (cardId === pid) {
+      const pl = players.find(xx => xx.id === cardId);
+      if (pl && pl.id === pid) {
         cardEl = cd;
         break;
       }
@@ -863,7 +856,7 @@
   function distributionEquipes(nbEquipes) {
     currentNbTeams = nbEquipes;
     let arr = [...players];
-    // Mélange
+    // Mélange aléatoire
     for(let i = arr.length - 1; i > 0; i--){
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -911,30 +904,34 @@
 
         const card = document.createElement('div');
         card.className = cardClass;
-        // Clic => toggle winner
-        card.onclick = () => toggleWinnerManually(p.id);
 
-        // Image
+        // Clic => toggle winner
+        card.addEventListener('click', () => {
+          toggleWinnerManually(p.id);
+        });
+
         const img = document.createElement('img');
         img.src = `${photoBasePrefix}${p.id}.JPG`;
-        img.onerror = () => img.remove();
+        img.onerror = () => {
+          img.remove();
+        };
         img.style.width = '100%';
         img.style.height = '40%';
         img.style.objectFit = 'cover';
         img.style.borderRadius = '5px 5px 0 0';
         card.appendChild(img);
 
-        // Numéro du joueur
         const num = document.createElement('div');
         num.className = 'player-card-number';
         num.textContent = p.id.toString().padStart(3,'0');
-        // Double-clic => changer l'ID
-        num.ondblclick = (e) => {
-          e.stopPropagation();
-          changePlayerId(p);
-        };
 
-        // Vies
+        // DOUBLE-CLICK => changer ID
+        num.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          changePlayerId(p);
+        });
+
         const lv = document.createElement('div');
         lv.className = 'player-lives';
         lv.textContent = `Vies: ${p.lives}`;
@@ -960,7 +957,6 @@
     renderPlayers();
   }
 
-  // Marque en "dead-team" les équipes où plus personne n'a de vies
   function applyTeamStylesIfVisible() {
     const tc = document.getElementById('teams-container');
     if (tc.style.display === 'none') return;
@@ -968,7 +964,7 @@
     boxes.forEach((box, index) => {
       const teamNumber = index + 1;
       const teamPlayers = players.filter(p => p.team === teamNumber);
-      // S'il n'y a plus aucun vivant, c'est "dead-team"
+      // Savoir si l'équipe est "morte"
       const hasAlive = teamPlayers.some(p => p.lives > 0);
       if (!hasAlive) {
         box.classList.add('dead-team');
@@ -1109,7 +1105,7 @@
       return;
     }
 
-    // Etc. (tout le reste du code vocal)...
+    // (...etc. Garde le reste de la logique vocale si besoin.)
 
     console.log("Aucune commande reconnue pour:", str);
   }
@@ -1128,8 +1124,10 @@
     if (!val) return;
 
     if (val.includes('et')) {
+      // ex: "2 et 3"
       handleVoiceResult(`les équipes ${val} l'emportent`);
     } else {
+      // ex: "2"
       handleVoiceResult(`l'équipe ${val} l'emporte`);
     }
   }
@@ -1160,7 +1158,7 @@
     handleVoiceResult(`l'équipe ${teams} perdent ${vie} vies`);
   }
 
-  // Démarrage : affichage initial des joueurs
+  // Initial rendering
   renderPlayers();
 </script>
 </body>
