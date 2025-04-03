@@ -168,6 +168,7 @@
       padding: 5px 10px;
       border: 2px solid white;
       border-radius: 5px;
+      user-select: none;
     }
     .player-lives {
       font-family: Arial, sans-serif;
@@ -590,6 +591,39 @@
   // Préfixe d'URL pour les photos
   const photoBasePrefix = "https://github.com/Magicarpe1/Squid-game/raw/main/images/_AA1000";
 
+  // ---------------------------
+  // FONCTION DE CHANGEMENT D'ID
+  // ---------------------------
+  function changePlayerId(player) {
+    const newIdRaw = prompt("Entrez le nouveau numéro du joueur :", player.id);
+    if (newIdRaw === null) return; // Annulé
+    const newId = parseInt(newIdRaw, 10);
+    if (isNaN(newId) || newId < 1) {
+      alert("Numéro invalide !");
+      return;
+    }
+
+    // Vérifier s'il existe déjà un joueur avec cet ID
+    const alreadyExists = players.find((p) => p.id === newId && p !== player);
+    if (alreadyExists) {
+      const force = confirm(`Un joueur avec l'ID ${newId} existe déjà. Continuer quand même ?`);
+      if (!force) return;
+    }
+
+    // Sauvegarde l'état
+    saveState();
+
+    // Appliquer le changement
+    player.id = newId;
+
+    // Mettre à jour l'interface
+    if (document.getElementById('teams-container').style.display !== 'none') {
+      renderTeamsUI();
+    } else {
+      renderPlayers();
+    }
+  }
+
   // Affichage principal (players)
   function renderPlayers() {
     const container = document.getElementById('players-container');
@@ -604,8 +638,11 @@
 
       const card = document.createElement('div');
       card.className = cardClass;
+
+      // Clic sur la carte => toggle winner
       card.onclick = () => toggleWinnerManually(p.id);
 
+      // Image
       const img = document.createElement('img');
       img.src = `${photoBasePrefix}${p.id}.JPG`;
       img.onerror = () => {
@@ -617,10 +654,17 @@
       img.style.borderRadius = '5px 5px 0 0';
       card.appendChild(img);
 
+      // Numéro
       const pn = document.createElement('div');
       pn.className = 'player-card-number';
       pn.textContent = p.id.toString().padStart(3, '0');
+      // Double-clic sur le numéro => changer l'ID
+      pn.ondblclick = (e) => {
+        e.stopPropagation(); // évite de toggleWinner
+        changePlayerId(p);
+      };
 
+      // Vies
       const lv = document.createElement('div');
       lv.className = 'player-lives';
       lv.textContent = `Vies: ${p.lives}`;
@@ -762,7 +806,8 @@
     for (let cd of pc.children) {
       const numberDiv = cd.querySelector('.player-card-number');
       const cardId = parseInt(numberDiv.textContent, 10);
-      if (cardId === pid) {
+      const pl = players.find(xx => xx.id === cardId);
+      if (pl && pl.id === pid) {
         cardEl = cd;
         break;
       }
@@ -879,6 +924,7 @@
 
         const card = document.createElement('div');
         card.className = cardClass;
+        // Toggle winner sur clic
         card.onclick = () => toggleWinnerManually(p.id);
 
         const img = document.createElement('img');
@@ -895,6 +941,11 @@
         const num = document.createElement('div');
         num.className = 'player-card-number';
         num.textContent = p.id.toString().padStart(3,'0');
+        // Double-clic => changer l'ID
+        num.ondblclick = (e) => {
+          e.stopPropagation(); // sinon on toggleWinner
+          changePlayerId(p);
+        };
 
         const lv = document.createElement('div');
         lv.className = 'player-lives';
@@ -928,9 +979,12 @@
     boxes.forEach((box, index) => {
       const teamNumber = index + 1;
       const teamPlayers = players.filter(p => p.team === teamNumber);
-      // est-ce qu'il y a au moins un joueur vivant ?
-      const isDead = teamPlayers.some(p => p.lives <= 0);
-      if(isDead){
+      // Vérifie si tous les joueurs d'une équipe sont morts (?)
+      // Si on voulait dire "isDead" quand AU MOINS un joueur est mort, on adapte :
+      // Mais ici, souvent, "dead-team" signifie plus personne de vivant ?
+      // On adapte selon ton besoin exact. Ex ci-dessous = s'il n'y a plus de joueur vivant
+      const hasAlive = teamPlayers.some(p => p.lives > 0);
+      if (!hasAlive) {
         box.classList.add('dead-team');
       } else {
         box.classList.remove('dead-team');
